@@ -19,17 +19,17 @@ public class Database implements IDatabase {
     /**
      * LevelDB database instance
      */
-    private DB db;
+    protected DB db;
 
     /**
      * database path
      */
-    private String path;
+    protected String path;
 
     /**
      * next ObjectId
      */
-    private long nextObjectId = 0;
+    protected long nextObjectId = 0;
 
     /**
      * open database
@@ -71,7 +71,7 @@ public class Database implements IDatabase {
         db.close();
     }
 
-    private void initAfterOpen() throws IOException {
+    protected void initAfterOpen() throws IOException {
         final Box<Long> maxObjectId = new Box<>(1L);
         prefixForEach(Encoding.KEYPREFIX_META, (entry -> {
             final MetaInfo meta = MetaInfo.fromBytes(entry.getValue());
@@ -82,7 +82,7 @@ public class Database implements IDatabase {
         nextObjectId = maxObjectId.value + 1;
     }
 
-    private long prefixForEach(final byte[] prefix, final Consumer<Map.Entry<byte[], byte[]>> onItem) {
+    protected long prefixForEach(final byte[] prefix, final Consumer<Map.Entry<byte[], byte[]>> onItem) {
         DBIterator iter = dbIter();
         long count = 0;
         try {
@@ -105,11 +105,11 @@ public class Database implements IDatabase {
         return count;
     }
 
-    private DBIterator dbIter() {
+    protected DBIterator dbIter() {
         return db.iterator();
     }
 
-    private byte[] dbGet(byte[] key) {
+    protected byte[] dbGet(byte[] key) {
         // System.out.printf("GET %s\n", new String(key));
         try {
             return db.get(key);
@@ -118,22 +118,22 @@ public class Database implements IDatabase {
         }
     }
 
-    private void dbPut(byte[] key, byte[] value) {
+    protected void dbPut(byte[] key, byte[] value) {
         // System.out.printf("PUT %s = %s\n", new String(key), new String(value));
         db.put(key, value);
     }
 
-    private void dbDelete(byte[] key) {
+    protected void dbDelete(byte[] key) {
         // System.out.printf("DELETE %s\n", new String(key));
         db.delete(key);
     }
 
-    private MetaInfo getKeyMeta(byte[] key) {
+    protected MetaInfo getKeyMeta(byte[] key) {
         final byte[] fullKey = Encoding.encodeMetaKey(key);
         return MetaInfo.fromBytes(dbGet(fullKey));
     }
 
-    private MetaInfo getOrCreateKeyMeta(byte[] key) {
+    protected MetaInfo getOrCreateKeyMeta(byte[] key) {
         final byte[] fullKey = Encoding.encodeMetaKey(key);
         MetaInfo meta = MetaInfo.fromBytes(dbGet(fullKey));
         if (meta == null) {
@@ -143,7 +143,7 @@ public class Database implements IDatabase {
         return meta;
     }
 
-    private long getOrCreateKeyObjectId(byte[] key) {
+    protected long getOrCreateKeyObjectId(byte[] key) {
         final byte[] fullKey = Encoding.encodeMetaKey(key);
         byte[] ret = dbGet(fullKey);
         if (ret != null) {
@@ -154,7 +154,7 @@ public class Database implements IDatabase {
         return meta.objectId;
     }
 
-    private void updateMetaInfo(byte[] key, MetaInfo meta) {
+    protected void updateMetaInfo(byte[] key, MetaInfo meta) {
         dbPut(Encoding.encodeMetaKey(key), meta.toBytes());
     }
 
