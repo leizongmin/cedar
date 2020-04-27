@@ -295,7 +295,10 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public long forEachKeys(final byte[] prefix) {
-        return 0;
+    public long forEachKeys(final byte[] prefix, BiConsumer<byte[], MetaInfo> onItem) {
+        return prefixForEach(Encoding.combineMultipleBytes(Encoding.KEYPREFIX_META, prefix), (entry -> {
+            final MetaInfo meta = MetaInfo.fromBytes(entry.getValue());
+            onItem.accept(Encoding.stripDataKeyPrefix(entry.getKey()), meta);
+        }));
     }
 }

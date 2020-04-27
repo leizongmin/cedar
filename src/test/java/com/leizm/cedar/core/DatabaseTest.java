@@ -92,6 +92,14 @@ class DatabaseTest {
         final Database db = createTempDatabase();
         final List<byte[]> list = generateRandomKeyList();
         list.forEach(key -> testMapForKey(db, key));
+
+        // test forEachKeys
+        final List<byte[]> list2 = new ArrayList<>();
+        db.forEachKeys((key, meta) -> {
+            assertEquals(3, meta.size);
+            list2.add(key);
+        });
+        assertEquals(new HashSet<>().addAll(list), new HashSet<>().addAll(list2));
     }
 
     void testMapForKey(final Database db, final byte[] key) {

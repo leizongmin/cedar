@@ -47,5 +47,9 @@ public interface IDatabase {
 
     long sortedListForEach(byte[] key, Consumer<byte[]> onItem);
 
-    long forEachKeys(byte[] prefix);
+    long forEachKeys(byte[] prefix, BiConsumer<byte[], MetaInfo> onItem);
+
+    default long forEachKeys(BiConsumer<byte[], MetaInfo> onItem) {
+        return forEachKeys(new byte[]{}, onItem);
+    }
 }
