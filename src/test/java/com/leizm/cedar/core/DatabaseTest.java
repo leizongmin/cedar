@@ -9,8 +9,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 
 class DatabaseTest {
@@ -79,9 +78,9 @@ class DatabaseTest {
         });
     }
 
-    static List<byte[]> generateRandomKeyList() {
+    static List<byte[]> generateRandomKeyList(int count) {
         List<byte[]> list = new ArrayList<>();
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < count; i++) {
             list.add(String.format("key-%d-%d", System.currentTimeMillis(), i).getBytes());
         }
         return list;
@@ -90,7 +89,7 @@ class DatabaseTest {
     @Test
     void testMap() {
         final Database db = createTempDatabase();
-        final List<byte[]> list = generateRandomKeyList();
+        final List<byte[]> list = generateRandomKeyList(10);
         list.forEach(key -> testMapForKey(db, key));
 
         // test forEachKeys
@@ -131,5 +130,42 @@ class DatabaseTest {
         assertArrayEquals("123".getBytes(), db.mapRemove(key, "a".getBytes()).get());
         assertEquals(Optional.empty(), db.mapRemove(key, "a".getBytes()));
         assertEquals(3, db.mapSize(key));
+    }
+
+    @Test
+    void testSet() {
+        final Database db = createTempDatabase();
+        final List<byte[]> list = generateRandomKeyList(10);
+        list.forEach(key -> testSetForKey(db, key));
+
+        // test forEachKeys
+        final List<byte[]> list2 = new ArrayList<>();
+        db.forEachKeys((key, meta) -> {
+            assertEquals(2, meta.size);
+            list2.add(key);
+        });
+        assertEquals(new HashSet<>().addAll(list), new HashSet<>().addAll(list2));
+    }
+
+    void testSetForKey(final Database db, final byte[] key) {
+        System.out.println("testSetForKey: " + new String(key));
+
+        assertFalse(db.setIsMember(key, "a".getBytes()));
+
+        assertEquals(2, db.setAdd(key, "a".getBytes(), "b".getBytes()));
+        assertTrue(db.setIsMember(key, "a".getBytes()));
+        assertTrue(db.setIsMember(key, "b".getBytes()));
+        assertFalse(db.setIsMember(key, "c".getBytes()));
+        assertEquals(2, db.setSize(key));
+
+        assertEquals(1, db.setAdd(key, "a".getBytes(), "b".getBytes(), "c".getBytes()));
+        assertTrue(db.setIsMember(key, "c".getBytes()));
+        assertEquals(3, db.setSize(key));
+
+        assertEquals(1, db.setRemove(key, "x".getBytes(), "c".getBytes()));
+        assertEquals(2, db.setSize(key));
+
+        final Object[] list = db.setMembers(key).stream().map(String::new).toArray();
+        assertArrayEquals(new String[]{"a", "b"}, list);
     }
 }

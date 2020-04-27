@@ -246,27 +246,74 @@ public class Database implements IDatabase {
 
     @Override
     public long setAdd(final byte[] key, final byte[]... values) {
-        return 0;
+        final MetaInfo meta = getOrCreateKeyMeta(key);
+        long newRows = 0;
+        for (final byte[] value : values) {
+            final byte[] fullKey = Encoding.encodeDataSetKey(meta.objectId, value);
+            if (dbGet(fullKey) == null) {
+                newRows++;
+            }
+            dbPut(fullKey, new byte[]{});
+        }
+        if (newRows > 0) {
+            meta.size += newRows;
+            updateMetaInfo(key, meta);
+        }
+        return newRows;
     }
 
     @Override
-    public boolean setIsMember(final byte[] key, final byte[]... value) {
-        return false;
+    public boolean setIsMember(final byte[] key, final byte[]... values) {
+        if (values.length < 1) {
+            return false;
+        }
+        final MetaInfo meta = getKeyMeta(key);
+        if (meta == null) {
+            return false;
+        }
+        boolean yes = true;
+        for (final byte[] value : values) {
+            final byte[] fullKey = Encoding.encodeDataSetKey(meta.objectId, value);
+            yes &= dbGet(fullKey) != null;
+        }
+        return yes;
     }
 
     @Override
-    public boolean setRemove(final byte[] key, final byte[]... values) {
-        return false;
+    public long setRemove(final byte[] key, final byte[]... values) {
+        final MetaInfo meta = getKeyMeta(key);
+        if (meta == null) {
+            return 0;
+        }
+        long deleteRows = 0;
+        for (final byte[] value : values) {
+            final byte[] fullKey = Encoding.encodeDataSetKey(meta.objectId, value);
+            if (dbGet(fullKey) != null) {
+                deleteRows++;
+                dbDelete(fullKey);
+            }
+        }
+        if (deleteRows > 0) {
+            meta.size -= deleteRows;
+            updateMetaInfo(key, meta);
+        }
+        return deleteRows;
     }
 
     @Override
     public long setSize(final byte[] key) {
+        final MetaInfo meta = getKeyMeta(key);
+        if (meta != null) {
+            return meta.size;
+        }
         return 0;
     }
 
     @Override
     public long setForEach(final byte[] key, final Consumer<byte[]> onItem) {
-        return 0;
+        return prefixForEach(Encoding.encodeDataMapPrefixKey(getOrCreateKeyObjectId(key)), entry -> {
+            onItem.accept(Encoding.decodeDataSetKey(entry.getKey()));
+        });
     }
 
     @Override

@@ -1,5 +1,7 @@
 package com.leizm.cedar.core;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -29,13 +31,19 @@ public interface IDatabase {
 
     long setAdd(byte[] key, byte[]... values);
 
-    boolean setIsMember(byte[] key, byte[]... value);
+    boolean setIsMember(byte[] key, byte[]... values);
 
-    boolean setRemove(byte[] key, byte[]... values);
+    long setRemove(byte[] key, byte[]... values);
 
     long setSize(byte[] key);
 
     long setForEach(byte[] key, Consumer<byte[]> onItem);
+
+    default List<byte[]> setMembers(byte[] key) {
+        final List<byte[]> list = new ArrayList<>();
+        setForEach(key, list::add);
+        return list;
+    }
 
     long sortedListAdd(byte[] key, byte[]... scoreValuePairs);
 

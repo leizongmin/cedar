@@ -51,4 +51,12 @@ public class Encoding {
     public static byte[] encodeDataMapPrefixKey(long objectId) {
         return combineMultipleBytes(KEYPREFIX_DATA, longToBytes(objectId));
     }
+
+    public static byte[] encodeDataSetKey(long objectId, byte[] value) {
+        return combineMultipleBytes(KEYPREFIX_DATA, longToBytes(objectId), value);
+    }
+
+    public static byte[] decodeDataSetKey(byte[] fullKey) {
+        return Arrays.copyOfRange(fullKey, 9, fullKey.length);
+    }
 }
