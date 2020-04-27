@@ -133,25 +133,16 @@ public class Database implements IDatabase {
         return MetaInfo.fromBytes(dbGet(fullKey));
     }
 
-    protected MetaInfo getOrCreateKeyMeta(byte[] key) {
+    protected MetaInfo getOrCreateKeyMeta(byte[] key, KeyType type) {
         final byte[] fullKey = Encoding.encodeMetaKey(key);
         MetaInfo meta = MetaInfo.fromBytes(dbGet(fullKey));
         if (meta == null) {
-            meta = new MetaInfo(nextObjectId++, 0);
+            meta = new MetaInfo(nextObjectId++, type, 0);
             dbPut(fullKey, meta.toBytes());
+        } else if (!meta.type.equals(type)) {
+            throw new IllegalArgumentException(String.format("expected type %s but actually %s", type.name(), meta.type.name()));
         }
         return meta;
-    }
-
-    protected long getOrCreateKeyObjectId(byte[] key) {
-        final byte[] fullKey = Encoding.encodeMetaKey(key);
-        byte[] ret = dbGet(fullKey);
-        if (ret != null) {
-            return Encoding.longFromBytes(ret);
-        }
-        MetaInfo meta = new MetaInfo(nextObjectId++, 0);
-        dbPut(fullKey, meta.toBytes());
-        return meta.objectId;
     }
 
     protected void updateMetaInfo(byte[] key, MetaInfo meta) {
@@ -160,7 +151,7 @@ public class Database implements IDatabase {
 
     @Override
     public Optional<byte[]> mapGet(final byte[] key, final byte[] field) {
-        final byte[] fullKey = Encoding.encodeDataMapFieldKey(getOrCreateKeyObjectId(key), field);
+        final byte[] fullKey = Encoding.encodeDataMapFieldKey(getOrCreateKeyMeta(key, KeyType.Map).objectId, field);
         return Optional.ofNullable(dbGet(fullKey));
     }
 
@@ -169,7 +160,7 @@ public class Database implements IDatabase {
         if (pairs.length % 2 != 0) {
             throw new IllegalArgumentException(String.format("pairs length is %d", pairs.length));
         }
-        final MetaInfo meta = getOrCreateKeyMeta(key);
+        final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.Map);
         long newRows = 0;
         for (int i = 0; i < pairs.length; i += 2) {
             final byte[] fullKey = Encoding.encodeDataMapFieldKey(meta.objectId, pairs[i]);
@@ -187,7 +178,7 @@ public class Database implements IDatabase {
 
     @Override
     public Optional<byte[]> mapRemove(final byte[] key, final byte[] field) {
-        final MetaInfo meta = getOrCreateKeyMeta(key);
+        final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.Map);
         final byte[] fullKey = Encoding.encodeDataMapFieldKey(meta.objectId, field);
         final byte[] oldValue = dbGet(fullKey);
         if (oldValue != null) {
@@ -200,7 +191,7 @@ public class Database implements IDatabase {
 
     @Override
     public long mapForEach(final byte[] key, final BiConsumer<byte[], byte[]> onItem) {
-        return prefixForEach(Encoding.encodeDataMapPrefixKey(getOrCreateKeyObjectId(key)), entry -> {
+        return prefixForEach(Encoding.encodeDataMapPrefixKey(getOrCreateKeyMeta(key, KeyType.Map).objectId), entry -> {
             onItem.accept(Encoding.stripDataKeyPrefix(entry.getKey()), entry.getValue());
         });
     }
@@ -246,7 +237,7 @@ public class Database implements IDatabase {
 
     @Override
     public long setAdd(final byte[] key, final byte[]... values) {
-        final MetaInfo meta = getOrCreateKeyMeta(key);
+        final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.Set);
         long newRows = 0;
         for (final byte[] value : values) {
             final byte[] fullKey = Encoding.encodeDataSetKey(meta.objectId, value);
@@ -311,7 +302,7 @@ public class Database implements IDatabase {
 
     @Override
     public long setForEach(final byte[] key, final Consumer<byte[]> onItem) {
-        return prefixForEach(Encoding.encodeDataMapPrefixKey(getOrCreateKeyObjectId(key)), entry -> {
+        return prefixForEach(Encoding.encodeDataMapPrefixKey(getOrCreateKeyMeta(key, KeyType.Set).objectId), entry -> {
             onItem.accept(Encoding.decodeDataSetKey(entry.getKey()));
         });
     }
