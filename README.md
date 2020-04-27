@@ -1,4 +1,5 @@
-# cedar, NoSQL embedded database on top of LevelDB
+# cedar ![Java CI with Gradle](https://github.com/leizongmin/cedar/workflows/Java%20CI%20with%20Gradle/badge.svg)
+NoSQL embedded database on top of LevelDB
 
 ## Installation
 
