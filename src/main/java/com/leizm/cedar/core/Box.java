@@ -6,4 +6,8 @@ public class Box<T> {
     public Box(T value) {
         this.value = value;
     }
+
+    public static <T> Box<T> of(T value) {
+        return new Box<>(value);
+    }
 }

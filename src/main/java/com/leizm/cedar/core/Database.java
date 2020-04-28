@@ -72,7 +72,7 @@ public class Database implements IDatabase {
     }
 
     protected void initAfterOpen() throws IOException {
-        final Box<Long> maxObjectId = new Box<>(1L);
+        final Box<Long> maxObjectId = Box.of(1L);
         prefixForEach(Encoding.KEYPREFIX_META, (entry -> {
             final MetaInfo meta = MetaInfo.fromBytes(entry.getValue());
             if (meta.objectId > maxObjectId.value) {
@@ -320,19 +320,17 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public synchronized long sortedListAdd(final byte[] key, final byte[]... pairs) {
-        checkPairsArgument(pairs);
+    public synchronized long sortedListAdd(final byte[] key, final SortedListItem... items) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
         long seq = meta.extra == null ? 1 : Encoding.longFromBytes(meta.extra);
-        for (int i = 0; i < pairs.length; i += 2) {
-            final byte[] fullKey = Encoding.encodeDataSortedListKey(meta.objectId, seq++, pairs[i]);
-            dbPut(fullKey, pairs[i + 1]);
+        for (int i = 0; i < items.length; i++) {
+            final byte[] fullKey = Encoding.encodeDataSortedListKey(meta.objectId, seq++, items[i].score);
+            dbPut(fullKey, items[i].value);
         }
-        final long newRows = pairs.length / 2;
         meta.extra = Encoding.longToBytes(seq);
-        meta.size += newRows;
+        meta.size += items.length;
         updateMetaInfo(key, meta);
-        return newRows;
+        return items.length;
     }
 
     @Override
@@ -341,7 +339,7 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public synchronized Optional<byte[]> sortedListLeftPop(final byte[] key, final byte[] maxScore) {
+    public synchronized Optional<SortedListItem> sortedListLeftPop(final byte[] key, final byte[] maxScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
         final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.objectId);
         final DBIterator iter = dbIter();
@@ -359,7 +357,7 @@ public class Database implements IDatabase {
                 dbDelete(first.getKey());
                 meta.size--;
                 updateMetaInfo(key, meta);
-                return Optional.of(first.getValue());
+                return Optional.of(SortedListItem.of(score, first.getValue()));
             } else {
                 return Optional.empty();
             }
@@ -373,7 +371,7 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public synchronized Optional<byte[]> sortedListRightPop(final byte[] key, final byte[] minScore) {
+    public synchronized Optional<SortedListItem> sortedListRightPop(final byte[] key, final byte[] minScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
         final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.objectId);
         final DBIterator iter = dbIter();
@@ -391,7 +389,7 @@ public class Database implements IDatabase {
                 dbDelete(last.getKey());
                 meta.size--;
                 updateMetaInfo(key, meta);
-                return Optional.of(last.getValue());
+                return Optional.of(SortedListItem.of(score, last.getValue()));
             } else {
                 return Optional.empty();
             }
@@ -405,13 +403,13 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public long sortedListForEach(final byte[] key, final Consumer<byte[]> onItem) {
+    public long sortedListForEach(final byte[] key, final Consumer<SortedListItem> onItem) {
         final MetaInfo meta = getKeyMeta(key);
         if (meta == null) {
             return 0;
         }
         return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.objectId), entry -> {
-            onItem.accept(Encoding.decodeDataSetKey(entry.getKey()));
+            onItem.accept(SortedListItem.of(Encoding.decodeDataSortedListKey(entry.getKey()), entry.getValue()));
         });
     }
 

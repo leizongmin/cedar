@@ -45,15 +45,21 @@ public interface IDatabase {
         return list;
     }
 
-    long sortedListAdd(byte[] key, byte[]... pairs);
+    long sortedListAdd(byte[] key, SortedListItem[] items);
 
     long sortedListSize(byte[] key);
 
-    Optional<byte[]> sortedListLeftPop(byte[] key, byte[] maxScore);
+    Optional<SortedListItem> sortedListLeftPop(byte[] key, byte[] maxScore);
 
-    Optional<byte[]> sortedListRightPop(byte[] key, byte[] minScore);
+    Optional<SortedListItem> sortedListRightPop(byte[] key, byte[] minScore);
 
-    long sortedListForEach(byte[] key, Consumer<byte[]> onItem);
+    long sortedListForEach(byte[] key, Consumer<SortedListItem> onItem);
+
+    default List<SortedListItem> sortedListValues(byte[] key) {
+        final List<SortedListItem> list = new ArrayList<>();
+        sortedListForEach(key, (final SortedListItem item) -> list.add(item));
+        return list;
+    }
 
     long forEachKeys(byte[] prefix, BiConsumer<byte[], MetaInfo> onItem);
 
