@@ -3,7 +3,6 @@ package com.leizm.cedar.core;
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBException;
 import org.iq80.leveldb.DBIterator;
-import org.iq80.leveldb.Options;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -35,13 +34,23 @@ public class Database implements IDatabase {
      * open database
      *
      * @param path    store path
-     * @param options LevelDB options
+     * @param options options
      * @throws IOException
      */
     public Database(String path, Options options) throws IOException {
-        db = factory.open(Paths.get(path).toFile(), options);
+        db = factory.open(Paths.get(path).toFile(), Options.getOrDefaultLevelDBOptions(options));
         this.path = path;
         initAfterOpen();
+    }
+
+    /**
+     * open database
+     *
+     * @param path store path
+     * @throws IOException
+     */
+    public Database(String path) throws IOException {
+        this(path, null);
     }
 
     /**

@@ -1,7 +1,6 @@
 package com.leizm.cedar.core;
 
 import org.iq80.leveldb.DBIterator;
-import org.iq80.leveldb.Options;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
@@ -29,7 +28,7 @@ class DatabaseTest {
     static Database createTempDatabase(String path) {
         try {
             System.out.printf("create database on path: %s\n", path);
-            Database db = new Database(path, new Options().createIfMissing(true));
+            Database db = new Database(path);
             dbList.add(db);
             return db;
         } catch (IOException e) {
