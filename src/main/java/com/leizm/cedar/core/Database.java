@@ -156,7 +156,7 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public long mapPut(final byte[] key, final byte[]... pairs) {
+    public synchronized long mapPut(final byte[] key, final byte[]... pairs) {
         if (pairs.length % 2 != 0) {
             throw new IllegalArgumentException(String.format("pairs length is %d", pairs.length));
         }
@@ -177,7 +177,7 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public Optional<byte[]> mapRemove(final byte[] key, final byte[] field) {
+    public synchronized Optional<byte[]> mapRemove(final byte[] key, final byte[] field) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.Map);
         final byte[] fullKey = Encoding.encodeDataMapFieldKey(meta.objectId, field);
         final byte[] oldValue = dbGet(fullKey);
@@ -206,12 +206,12 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public long listLeftPush(final byte[] key, final byte[]... values) {
+    public synchronized long listLeftPush(final byte[] key, final byte[]... values) {
         return 0;
     }
 
     @Override
-    public long listRightPush(final byte[] key, final byte[]... values) {
+    public synchronized long listRightPush(final byte[] key, final byte[]... values) {
         return 0;
     }
 
@@ -221,12 +221,12 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public Optional<byte[]> listLeftPop(final byte[] key) {
+    public synchronized Optional<byte[]> listLeftPop(final byte[] key) {
         return Optional.empty();
     }
 
     @Override
-    public Optional<byte[]> listRightPop(final byte[] key) {
+    public synchronized Optional<byte[]> listRightPop(final byte[] key) {
         return Optional.empty();
     }
 
@@ -236,7 +236,7 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public long setAdd(final byte[] key, final byte[]... values) {
+    public synchronized long setAdd(final byte[] key, final byte[]... values) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.Set);
         long newRows = 0;
         for (final byte[] value : values) {
@@ -271,7 +271,7 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public long setRemove(final byte[] key, final byte[]... values) {
+    public synchronized long setRemove(final byte[] key, final byte[]... values) {
         final MetaInfo meta = getKeyMeta(key);
         if (meta == null) {
             return 0;
@@ -308,7 +308,7 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public long sortedListAdd(final byte[] key, final byte[]... scoreValuePairs) {
+    public synchronized long sortedListAdd(final byte[] key, final byte[]... scoreValuePairs) {
         return 0;
     }
 
@@ -318,12 +318,12 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public Optional<byte[]> sortedListLeftPop(final byte[] key, final byte[] maxScore) {
+    public synchronized Optional<byte[]> sortedListLeftPop(final byte[] key, final byte[] maxScore) {
         return Optional.empty();
     }
 
     @Override
-    public Optional<byte[]> sortedListRightPop(final byte[] key, final byte[] minScore) {
+    public synchronized Optional<byte[]> sortedListRightPop(final byte[] key, final byte[] minScore) {
         return Optional.empty();
     }
 
