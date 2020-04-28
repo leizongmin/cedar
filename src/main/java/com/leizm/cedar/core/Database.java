@@ -137,7 +137,7 @@ public class Database implements IDatabase {
         final byte[] fullKey = Encoding.encodeMetaKey(key);
         MetaInfo meta = MetaInfo.fromBytes(dbGet(fullKey));
         if (meta == null) {
-            meta = new MetaInfo(nextObjectId++, type, 0);
+            meta = new MetaInfo(nextObjectId++, type, 0, null);
             dbPut(fullKey, meta.toBytes());
         } else if (!meta.type.equals(type)) {
             throw new IllegalArgumentException(String.format("expected type %s but actually %s", type.name(), meta.type.name()));

@@ -27,11 +27,15 @@ public class Encoding {
     public static byte[] combineMultipleBytes(final byte[]... list) {
         int size = 0;
         for (final byte[] item : list) {
-            size += item.length;
+            if (item != null) {
+                size += item.length;
+            }
         }
         final ByteBuffer b = ByteBuffer.allocate(size);
         for (final byte[] item : list) {
-            b.put(item);
+            if (item != null) {
+                b.put(item);
+            }
         }
         return b.array();
     }
@@ -58,5 +62,9 @@ public class Encoding {
 
     public static byte[] decodeDataSetKey(byte[] fullKey) {
         return Arrays.copyOfRange(fullKey, 9, fullKey.length);
+    }
+
+    public static byte[] encodeDataSortedListKey(long objectId, long seq, byte[] score) {
+        return combineMultipleBytes(KEYPREFIX_DATA, longToBytes(objectId), longToBytes(seq), score);
     }
 }
