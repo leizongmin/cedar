@@ -27,9 +27,9 @@ public class Database implements IDatabase {
     protected String path;
 
     /**
-     * next ObjectId
+     * next key id
      */
-    protected long nextObjectId = 0;
+    protected long nextKeyId = 0;
 
     /**
      * open database
@@ -72,14 +72,14 @@ public class Database implements IDatabase {
     }
 
     protected void initAfterOpen() throws IOException {
-        final Box<Long> maxObjectId = Box.of(1L);
+        final Box<Long> maxKeyId = Box.of(1L);
         prefixForEach(Encoding.KEYPREFIX_META, (entry -> {
             final MetaInfo meta = MetaInfo.fromBytes(entry.getValue());
-            if (meta.objectId > maxObjectId.value) {
-                maxObjectId.value = meta.objectId;
+            if (meta.id > maxKeyId.value) {
+                maxKeyId.value = meta.id;
             }
         }));
-        nextObjectId = maxObjectId.value + 1;
+        nextKeyId = maxKeyId.value + 1;
     }
 
     protected long prefixForEach(final byte[] prefix, final Consumer<Map.Entry<byte[], byte[]>> onItem) {
@@ -137,7 +137,7 @@ public class Database implements IDatabase {
         final byte[] fullKey = Encoding.encodeMetaKey(key);
         MetaInfo meta = MetaInfo.fromBytes(dbGet(fullKey));
         if (meta == null) {
-            meta = new MetaInfo(nextObjectId++, type, 0, null);
+            meta = new MetaInfo(nextKeyId++, type, 0, null);
             dbPut(fullKey, meta.toBytes());
         } else if (!meta.type.equals(type)) {
             throw new IllegalArgumentException(String.format("expected type %s but actually %s", type.name(), meta.type.name()));
@@ -165,7 +165,7 @@ public class Database implements IDatabase {
 
     @Override
     public Optional<byte[]> mapGet(final byte[] key, final byte[] field) {
-        final byte[] fullKey = Encoding.encodeDataMapFieldKey(getOrCreateKeyMeta(key, KeyType.Map).objectId, field);
+        final byte[] fullKey = Encoding.encodeDataMapFieldKey(getOrCreateKeyMeta(key, KeyType.Map).id, field);
         return Optional.ofNullable(dbGet(fullKey));
     }
 
@@ -175,7 +175,7 @@ public class Database implements IDatabase {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.Map);
         long newRows = 0;
         for (int i = 0; i < pairs.length; i += 2) {
-            final byte[] fullKey = Encoding.encodeDataMapFieldKey(meta.objectId, pairs[i]);
+            final byte[] fullKey = Encoding.encodeDataMapFieldKey(meta.id, pairs[i]);
             if (dbGet(fullKey) == null) {
                 newRows++;
             }
@@ -191,7 +191,7 @@ public class Database implements IDatabase {
     @Override
     public synchronized Optional<byte[]> mapRemove(final byte[] key, final byte[] field) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.Map);
-        final byte[] fullKey = Encoding.encodeDataMapFieldKey(meta.objectId, field);
+        final byte[] fullKey = Encoding.encodeDataMapFieldKey(meta.id, field);
         final byte[] oldValue = dbGet(fullKey);
         if (oldValue != null) {
             meta.size--;
@@ -207,7 +207,7 @@ public class Database implements IDatabase {
         if (meta == null) {
             return 0;
         }
-        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.objectId), entry -> {
+        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> {
             onItem.accept(MapItem.of(Encoding.stripDataKeyPrefix(entry.getKey()), entry.getValue()));
         });
     }
@@ -252,7 +252,7 @@ public class Database implements IDatabase {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.Set);
         long newRows = 0;
         for (final byte[] value : values) {
-            final byte[] fullKey = Encoding.encodeDataSetKey(meta.objectId, value);
+            final byte[] fullKey = Encoding.encodeDataSetKey(meta.id, value);
             if (dbGet(fullKey) == null) {
                 newRows++;
             }
@@ -276,7 +276,7 @@ public class Database implements IDatabase {
         }
         boolean yes = true;
         for (final byte[] value : values) {
-            final byte[] fullKey = Encoding.encodeDataSetKey(meta.objectId, value);
+            final byte[] fullKey = Encoding.encodeDataSetKey(meta.id, value);
             yes &= dbGet(fullKey) != null;
         }
         return yes;
@@ -290,7 +290,7 @@ public class Database implements IDatabase {
         }
         long deleteRows = 0;
         for (final byte[] value : values) {
-            final byte[] fullKey = Encoding.encodeDataSetKey(meta.objectId, value);
+            final byte[] fullKey = Encoding.encodeDataSetKey(meta.id, value);
             if (dbGet(fullKey) != null) {
                 deleteRows++;
                 dbDelete(fullKey);
@@ -314,7 +314,7 @@ public class Database implements IDatabase {
         if (meta == null) {
             return 0;
         }
-        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.objectId), entry -> {
+        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> {
             onItem.accept(Encoding.decodeDataSetKey(entry.getKey()));
         });
     }
@@ -324,7 +324,7 @@ public class Database implements IDatabase {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
         long seq = meta.extra == null ? 1 : Encoding.longFromBytes(meta.extra);
         for (int i = 0; i < items.length; i++) {
-            final byte[] fullKey = Encoding.encodeDataSortedListKey(meta.objectId, seq++, items[i].score);
+            final byte[] fullKey = Encoding.encodeDataSortedListKey(meta.id, seq++, items[i].score);
             dbPut(fullKey, items[i].value);
         }
         meta.extra = Encoding.longToBytes(seq);
@@ -341,7 +341,7 @@ public class Database implements IDatabase {
     @Override
     public synchronized Optional<SortedListItem> sortedListLeftPop(final byte[] key, final byte[] maxScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
-        final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.objectId);
+        final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
         final DBIterator iter = dbIter();
         try {
             iter.seek(prefix);
@@ -373,10 +373,10 @@ public class Database implements IDatabase {
     @Override
     public synchronized Optional<SortedListItem> sortedListRightPop(final byte[] key, final byte[] minScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
-        final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.objectId);
+        final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
         final DBIterator iter = dbIter();
         try {
-            iter.seek(Encoding.encodeDataSortedListPrefixKey(meta.objectId + 1));
+            iter.seek(Encoding.encodeDataSortedListPrefixKey(meta.id + 1));
             if (!iter.hasPrev()) {
                 return Optional.empty();
             }
@@ -408,7 +408,7 @@ public class Database implements IDatabase {
         if (meta == null) {
             return 0;
         }
-        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.objectId), entry -> {
+        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> {
             onItem.accept(SortedListItem.of(Encoding.decodeDataSortedListKey(entry.getKey()), entry.getValue()));
         });
     }
