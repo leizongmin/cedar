@@ -41,4 +41,40 @@ public class MetaInfo {
                 extra
         );
     }
+
+    public static class ListExtra {
+        /**
+         * position of next left item
+         */
+        public long left;
+
+        /**
+         * position of next right item
+         */
+        public long right;
+
+        public ListExtra(final long left, final long right) {
+            this.left = left;
+            this.right = right;
+        }
+
+        public static ListExtra fromBytes(final byte[] bytes) {
+            if (bytes == null) {
+                return new ListExtra(0, 1);
+            }
+            final ByteBuffer b = ByteBuffer.allocate(bytes.length);
+            b.put(bytes);
+            b.flip();
+            final long left = b.getLong(0);
+            final long right = b.getLong(8);
+            return new ListExtra(left, right);
+        }
+
+        public byte[] toBytes() {
+            return Encoding.combineMultipleBytes(
+                    Encoding.longToBytes(left),
+                    Encoding.longToBytes(right)
+            );
+        }
+    }
 }

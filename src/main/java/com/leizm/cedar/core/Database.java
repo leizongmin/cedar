@@ -73,7 +73,7 @@ public class Database implements IDatabase {
 
     protected void initAfterOpen() throws IOException {
         final Box<Long> maxKeyId = Box.of(1L);
-        prefixForEach(Encoding.KEYPREFIX_META, (entry -> {
+        prefixForEach(Encoding.KEY_PREFIX_META, (entry -> {
             final MetaInfo meta = MetaInfo.fromBytes(entry.getValue());
             if (meta.id > maxKeyId.value) {
                 maxKeyId.value = meta.id;
@@ -219,12 +219,34 @@ public class Database implements IDatabase {
 
     @Override
     public synchronized long listLeftPush(final byte[] key, final byte[]... values) {
-        return 0;
+        if (values.length > 0) {
+            final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.List);
+            final MetaInfo.ListExtra extra = MetaInfo.ListExtra.fromBytes(meta.extra);
+            for (final byte[] value : values) {
+                final byte[] fullKey = Encoding.encodeDataListKey(meta.id, extra.left--);
+                dbPut(fullKey, value);
+            }
+            meta.size += values.length;
+            meta.extra = extra.toBytes();
+            updateMetaInfo(key, meta);
+        }
+        return values.length;
     }
 
     @Override
     public synchronized long listRightPush(final byte[] key, final byte[]... values) {
-        return 0;
+        if (values.length > 0) {
+            final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.List);
+            final MetaInfo.ListExtra extra = MetaInfo.ListExtra.fromBytes(meta.extra);
+            for (final byte[] value : values) {
+                final byte[] fullKey = Encoding.encodeDataListKey(meta.id, extra.right++);
+                dbPut(fullKey, value);
+            }
+            meta.size += values.length;
+            meta.extra = extra.toBytes();
+            updateMetaInfo(key, meta);
+        }
+        return values.length;
     }
 
     @Override
@@ -234,17 +256,50 @@ public class Database implements IDatabase {
 
     @Override
     public synchronized Optional<byte[]> listLeftPop(final byte[] key) {
-        return Optional.empty();
+        final MetaInfo meta = getKeyMeta(key);
+        if (meta == null) {
+            return Optional.empty();
+        }
+        final MetaInfo.ListExtra extra = MetaInfo.ListExtra.fromBytes(meta.extra);
+        final byte[] fullKey = Encoding.encodeDataListKey(meta.id, ++extra.left);
+        final byte[] value = dbGet(fullKey);
+        if (value != null) {
+            meta.size--;
+            meta.extra = extra.toBytes();
+            updateMetaInfo(key, meta);
+            dbDelete(fullKey);
+        }
+        return Optional.ofNullable(value);
     }
 
     @Override
     public synchronized Optional<byte[]> listRightPop(final byte[] key) {
-        return Optional.empty();
+        final MetaInfo meta = getKeyMeta(key);
+        if (meta == null) {
+            return Optional.empty();
+        }
+        final MetaInfo.ListExtra extra = MetaInfo.ListExtra.fromBytes(meta.extra);
+        final byte[] fullKey = Encoding.encodeDataListKey(meta.id, --extra.right);
+        final byte[] value = dbGet(fullKey);
+        if (value != null) {
+            meta.size--;
+            meta.extra = extra.toBytes();
+            updateMetaInfo(key, meta);
+            dbDelete(fullKey);
+        }
+        return Optional.ofNullable(value);
     }
 
     @Override
-    public long listForEach(final byte[] key, final Consumer<byte[]> onItem) {
-        return 0;
+    public long listForEach(final byte[] key, final Consumer<ListItem> onItem) {
+        final MetaInfo meta = getKeyMeta(key);
+        if (meta == null) {
+            return 0;
+        }
+        final Box<Long> index = Box.of(0L);
+        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> {
+            onItem.accept(ListItem.of(index.value++, entry.getValue()));
+        });
     }
 
     @Override
@@ -415,7 +470,7 @@ public class Database implements IDatabase {
 
     @Override
     public long forEachKeys(final byte[] prefix, BiConsumer<byte[], MetaInfo> onItem) {
-        return prefixForEach(Encoding.combineMultipleBytes(Encoding.KEYPREFIX_META, prefix), (entry -> {
+        return prefixForEach(Encoding.combineMultipleBytes(Encoding.KEY_PREFIX_META, prefix), (entry -> {
             final MetaInfo meta = MetaInfo.fromBytes(entry.getValue());
             onItem.accept(Encoding.stripDataKeyPrefix(entry.getKey()), meta);
         }));

@@ -17,7 +17,7 @@ public interface IDatabase {
 
     default List<MapItem> mapItems(byte[] key) {
         final List<MapItem> list = new ArrayList<>();
-        mapForEach(key, (final MapItem item) -> list.add(item));
+        mapForEach(key, list::add);
         return list;
     }
 
@@ -33,7 +33,13 @@ public interface IDatabase {
 
     Optional<byte[]> listRightPop(byte[] key);
 
-    long listForEach(byte[] key, Consumer<byte[]> onItem);
+    long listForEach(byte[] key, Consumer<ListItem> onItem);
+
+    default List<ListItem> listItems(byte[] key) {
+        final List<ListItem> list = new ArrayList<>();
+        listForEach(key, list::add);
+        return list;
+    }
 
     long setAdd(byte[] key, byte[]... values);
 
@@ -63,7 +69,7 @@ public interface IDatabase {
 
     default List<SortedListItem> sortedListItems(byte[] key) {
         final List<SortedListItem> list = new ArrayList<>();
-        sortedListForEach(key, (final SortedListItem item) -> list.add(item));
+        sortedListForEach(key, list::add);
         return list;
     }
 
