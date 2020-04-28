@@ -9,7 +9,7 @@ import java.util.function.Consumer;
 public interface IDatabase {
     Optional<byte[]> mapGet(byte[] key, byte[] field);
 
-    long mapPut(byte[] key, byte[]... fieldValuePairs);
+    long mapPut(byte[] key, byte[]... pairs);
 
     Optional<byte[]> mapRemove(byte[] key, byte[] field);
 
@@ -45,7 +45,7 @@ public interface IDatabase {
         return list;
     }
 
-    long sortedListAdd(byte[] key, byte[]... scoreValuePairs);
+    long sortedListAdd(byte[] key, byte[]... pairs);
 
     long sortedListSize(byte[] key);
 

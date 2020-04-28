@@ -40,31 +40,52 @@ public class Encoding {
         return b.array();
     }
 
-    public static byte[] stripDataKeyPrefix(byte[] fullKey) {
+    public static byte[] stripDataKeyPrefix(final byte[] fullKey) {
         return Arrays.copyOfRange(fullKey, 9, fullKey.length);
     }
 
-    public static byte[] encodeMetaKey(byte[] key) {
+    public static byte[] encodeMetaKey(final byte[] key) {
         return combineMultipleBytes(KEYPREFIX_META, key);
     }
 
-    public static byte[] encodeDataMapFieldKey(long objectId, byte[] field) {
+    public static byte[] encodeDataMapFieldKey(final long objectId, final byte[] field) {
         return combineMultipleBytes(KEYPREFIX_DATA, longToBytes(objectId), field);
     }
 
-    public static byte[] encodeDataMapPrefixKey(long objectId) {
+    public static byte[] encodeDataMapPrefixKey(final long objectId) {
         return combineMultipleBytes(KEYPREFIX_DATA, longToBytes(objectId));
     }
 
-    public static byte[] encodeDataSetKey(long objectId, byte[] value) {
+    public static byte[] encodeDataSetKey(final long objectId, final byte[] value) {
         return combineMultipleBytes(KEYPREFIX_DATA, longToBytes(objectId), value);
     }
 
-    public static byte[] decodeDataSetKey(byte[] fullKey) {
+    public static byte[] decodeDataSetKey(final byte[] fullKey) {
         return Arrays.copyOfRange(fullKey, 9, fullKey.length);
     }
 
-    public static byte[] encodeDataSortedListKey(long objectId, long seq, byte[] score) {
-        return combineMultipleBytes(KEYPREFIX_DATA, longToBytes(objectId), longToBytes(seq), score);
+    public static byte[] encodeDataSortedListKey(final long objectId, final long seq, final byte[] score) {
+        return combineMultipleBytes(KEYPREFIX_DATA, longToBytes(objectId), score, longToBytes(seq));
+    }
+
+    public static byte[] encodeDataSortedListPrefixKey(final long objectId) {
+        return combineMultipleBytes(KEYPREFIX_DATA, longToBytes(objectId));
+    }
+
+    public static byte[] decodeDataSortedListKey(final byte[] fullKey) {
+        return Arrays.copyOfRange(fullKey, 9, 17);
+    }
+
+    public static int compareScoreBytes(final byte[] score1, final byte[] score2) {
+        if (score1.length != score2.length) {
+            return 0;
+        }
+        for (int i = 0; i < score1.length; i++) {
+            int ret = Byte.compare(score1[i], score2[i]);
+            if (ret != 0) {
+                return ret;
+            }
+        }
+        return 0;
     }
 }

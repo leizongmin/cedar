@@ -168,4 +168,41 @@ class DatabaseTest {
         final Object[] list = db.setMembers(key).stream().map(String::new).toArray();
         assertArrayEquals(new String[]{"a", "b"}, list);
     }
+
+    @Test
+    void testSortedList() {
+        final Database db = createTempDatabase();
+        final List<byte[]> list = generateRandomKeyList(1);
+        list.forEach(key -> testSortedListForKey(db, key));
+
+        // test forEachKeys
+        // final List<byte[]> list2 = new ArrayList<>();
+        // db.forEachKeys((key, meta) -> {
+        //     assertEquals(3, meta.size);
+        //     list2.add(key);
+        // });
+        // assertEquals(new HashSet<>().addAll(list), new HashSet<>().addAll(list2));
+    }
+
+    void testSortedListForKey(final Database db, final byte[] key) {
+        System.out.println("testSortedListForKey: " + new String(key));
+
+        assertEquals(0, db.sortedListSize(key));
+        assertEquals(2, db.sortedListAdd(key,
+                Encoding.longToBytes(6), "aaa".getBytes(),
+                Encoding.longToBytes(5), "bbb".getBytes()
+        ));
+        assertEquals(2, db.sortedListSize(key));
+        assertArrayEquals("bbb".getBytes(), db.sortedListLeftPop(key, null).get());
+        assertArrayEquals("aaa".getBytes(), db.sortedListLeftPop(key, null).get());
+        assertEquals(0, db.sortedListSize(key));
+
+        assertEquals(3, db.sortedListAdd(key,
+                Encoding.longToBytes(2), "x".getBytes(),
+                Encoding.longToBytes(1), "y".getBytes(),
+                Encoding.longToBytes(1), "z".getBytes()
+        ));
+        assertEquals(3, db.sortedListSize(key));
+        assertEquals(Optional.empty(), db.sortedListLeftPop(key, Encoding.longToBytes(0)));
+    }
 }
