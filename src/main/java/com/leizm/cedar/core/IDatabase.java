@@ -13,7 +13,13 @@ public interface IDatabase {
 
     Optional<byte[]> mapRemove(byte[] key, byte[] field);
 
-    long mapForEach(byte[] key, BiConsumer<byte[], byte[]> onItem);
+    long mapForEach(byte[] key, Consumer<MapItem> onItem);
+
+    default List<MapItem> mapValues(byte[] key) {
+        final List<MapItem> list = new ArrayList<>();
+        mapForEach(key, (final MapItem item) -> list.add(item));
+        return list;
+    }
 
     long mapSize(byte[] key);
 

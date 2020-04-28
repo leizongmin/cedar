@@ -202,13 +202,13 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public long mapForEach(final byte[] key, final BiConsumer<byte[], byte[]> onItem) {
+    public long mapForEach(final byte[] key, final Consumer<MapItem> onItem) {
         final MetaInfo meta = getKeyMeta(key);
         if (meta == null) {
             return 0;
         }
         return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.objectId), entry -> {
-            onItem.accept(Encoding.stripDataKeyPrefix(entry.getKey()), entry.getValue());
+            onItem.accept(MapItem.of(Encoding.stripDataKeyPrefix(entry.getKey()), entry.getValue()));
         });
     }
 

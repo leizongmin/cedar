@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -119,10 +120,7 @@ class DatabaseTest {
         assertArrayEquals("xx".getBytes(), db.mapGet(key, "c".getBytes()).get());
         assertArrayEquals("zz".getBytes(), db.mapGet(key, "d".getBytes()).get());
 
-        final List<String> values = new ArrayList<>();
-        db.mapForEach(key, (k, v) -> {
-            values.add(String.format("%s=%s", new String(k), new String(v)));
-        });
+        final List<String> values = db.mapValues(key).stream().map(item -> String.format("%s=%s", new String(item.field), new String(item.value))).collect(Collectors.toList());
         assertEquals(Arrays.asList("a=123", "b=qq", "c=xx", "d=zz"), values);
         assertEquals(4, db.mapSize(key));
 
@@ -174,6 +172,13 @@ class DatabaseTest {
         final Database db = createTempDatabase();
         final List<byte[]> list = generateRandomKeyList(10);
         list.forEach(key -> testSortedListForKey(db, key));
+
+        // test forEachKeys
+        final List<byte[]> list2 = new ArrayList<>();
+        db.forEachKeys((key, meta) -> {
+            list2.add(key);
+        });
+        assertEquals(new HashSet<>().addAll(list), new HashSet<>().addAll(list2));
     }
 
     void testSortedListForKey(final Database db, final byte[] key) {
