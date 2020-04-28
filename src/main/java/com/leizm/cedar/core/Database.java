@@ -146,7 +146,12 @@ public class Database implements IDatabase {
     }
 
     protected void updateMetaInfo(byte[] key, MetaInfo meta) {
-        dbPut(Encoding.encodeMetaKey(key), meta.toBytes());
+        if (meta.size > 0) {
+            dbPut(Encoding.encodeMetaKey(key), meta.toBytes());
+        } else {
+            // delete key if size is 0
+            dbDelete(Encoding.encodeMetaKey(key));
+        }
     }
 
     protected long getSize(final byte[] key) {
