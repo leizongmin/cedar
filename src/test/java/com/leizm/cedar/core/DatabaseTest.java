@@ -106,14 +106,14 @@ class DatabaseTest {
 
         assertEquals(Optional.empty(), db.mapGet(key, "a".getBytes()));
 
-        assertEquals(1, db.mapPut(key, "a".getBytes(), "123".getBytes()));
+        assertEquals(1, db.mapPut(key, MapItem.of("a".getBytes(), "123".getBytes())));
         assertArrayEquals("123".getBytes(), db.mapGet(key, "a".getBytes()).get());
         assertEquals(1, db.mapSize(key));
 
         assertEquals(3, db.mapPut(key,
-                "b".getBytes(), "qq".getBytes(),
-                "c".getBytes(), "xx".getBytes(),
-                "d".getBytes(), "zz".getBytes()
+                MapItem.of("b".getBytes(), "qq".getBytes()),
+                MapItem.of("c".getBytes(), "xx".getBytes()),
+                MapItem.of("d".getBytes(), "zz".getBytes())
         ));
         assertArrayEquals("qq".getBytes(), db.mapGet(key, "b".getBytes()).get());
         assertArrayEquals("xx".getBytes(), db.mapGet(key, "c".getBytes()).get());

@@ -149,12 +149,6 @@ public class Database implements IDatabase {
         dbPut(Encoding.encodeMetaKey(key), meta.toBytes());
     }
 
-    protected void checkPairsArgument(final byte[]... pairs) {
-        if (pairs.length % 2 != 0) {
-            throw new IllegalArgumentException(String.format("pairs length is %d", pairs.length));
-        }
-    }
-
     protected long getSize(final byte[] key) {
         final MetaInfo meta = getKeyMeta(key);
         if (meta != null) {
@@ -170,22 +164,23 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public synchronized long mapPut(final byte[] key, final byte[]... pairs) {
-        checkPairsArgument(pairs);
-        final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.Map);
-        long newRows = 0;
-        for (int i = 0; i < pairs.length; i += 2) {
-            final byte[] fullKey = Encoding.encodeDataMapFieldKey(meta.id, pairs[i]);
-            if (dbGet(fullKey) == null) {
-                newRows++;
+    public synchronized long mapPut(final byte[] key, final MapItem... items) {
+        if (items.length > 0) {
+            final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.Map);
+            long newRows = 0;
+            for (final MapItem item : items) {
+                final byte[] fullKey = Encoding.encodeDataMapFieldKey(meta.id, item.field);
+                if (dbGet(fullKey) == null) {
+                    newRows++;
+                }
+                dbPut(fullKey, item.value);
             }
-            dbPut(fullKey, pairs[i + 1]);
+            if (newRows > 0) {
+                meta.size += newRows;
+                updateMetaInfo(key, meta);
+            }
         }
-        if (newRows > 0) {
-            meta.size += newRows;
-            updateMetaInfo(key, meta);
-        }
-        return newRows;
+        return items.length;
     }
 
     @Override

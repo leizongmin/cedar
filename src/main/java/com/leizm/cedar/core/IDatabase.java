@@ -9,7 +9,7 @@ import java.util.function.Consumer;
 public interface IDatabase {
     Optional<byte[]> mapGet(byte[] key, byte[] field);
 
-    long mapPut(byte[] key, byte[]... pairs);
+    long mapPut(byte[] key, MapItem... items);
 
     Optional<byte[]> mapRemove(byte[] key, byte[] field);
 
