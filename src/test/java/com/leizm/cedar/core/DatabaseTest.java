@@ -120,7 +120,7 @@ class DatabaseTest {
         assertArrayEquals("xx".getBytes(), db.mapGet(key, "c".getBytes()).get());
         assertArrayEquals("zz".getBytes(), db.mapGet(key, "d".getBytes()).get());
 
-        final List<String> values = db.mapValues(key).stream().map(item -> String.format("%s=%s", new String(item.field), new String(item.value))).collect(Collectors.toList());
+        final List<String> values = db.mapItems(key).stream().map(item -> String.format("%s=%s", new String(item.field), new String(item.value))).collect(Collectors.toList());
         assertEquals(Arrays.asList("a=123", "b=qq", "c=xx", "d=zz"), values);
         assertEquals(4, db.mapSize(key));
 
@@ -200,7 +200,7 @@ class DatabaseTest {
                 SortedListItem.of(Encoding.longToBytes(1), "z".getBytes())
         ));
         assertEquals(3, db.sortedListSize(key));
-        final List<SortedListItem> values = db.sortedListValues(key);
+        final List<SortedListItem> values = db.sortedListItems(key);
         assertEquals(3, values.size());
         assertEquals("y", new String(values.get(0).value));
         assertEquals("z", new String(values.get(1).value));

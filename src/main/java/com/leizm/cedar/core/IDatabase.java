@@ -15,7 +15,7 @@ public interface IDatabase {
 
     long mapForEach(byte[] key, Consumer<MapItem> onItem);
 
-    default List<MapItem> mapValues(byte[] key) {
+    default List<MapItem> mapItems(byte[] key) {
         final List<MapItem> list = new ArrayList<>();
         mapForEach(key, (final MapItem item) -> list.add(item));
         return list;
@@ -61,7 +61,7 @@ public interface IDatabase {
 
     long sortedListForEach(byte[] key, Consumer<SortedListItem> onItem);
 
-    default List<SortedListItem> sortedListValues(byte[] key) {
+    default List<SortedListItem> sortedListItems(byte[] key) {
         final List<SortedListItem> list = new ArrayList<>();
         sortedListForEach(key, (final SortedListItem item) -> list.add(item));
         return list;
