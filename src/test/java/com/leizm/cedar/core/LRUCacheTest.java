@@ -31,7 +31,7 @@ class LRUCacheTest {
             assertNull(cache.get(getKey(i)));
         }
         for (long i = 90; i < 100; i++) {
-            assertNull(cache.get(getKey(i)));
+            assertNotNull(cache.get(getKey(i)));
         }
 
         cache.clear();

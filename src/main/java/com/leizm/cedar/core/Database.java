@@ -165,20 +165,20 @@ public class Database implements IDatabase {
     }
 
     protected void updateMetaInfo(byte[] key, MetaInfo meta) {
-        if (meta.size > 0) {
+        if (meta.count > 0) {
             metaInfoCache.put(new String(key), meta);
             dbPut(Encoding.encodeMetaKey(key), meta.toBytes());
         } else {
-            // delete key if size is 0
+            // delete key if count is 0
             metaInfoCache.remove(new String(key));
             dbDelete(Encoding.encodeMetaKey(key));
         }
     }
 
-    protected long getSize(final byte[] key) {
+    protected long getCount(final byte[] key) {
         final MetaInfo meta = getKeyMeta(key);
         if (meta != null) {
-            return meta.size;
+            return meta.count;
         }
         return 0;
     }
@@ -202,7 +202,7 @@ public class Database implements IDatabase {
                 dbPut(fullKey, item.value);
             }
             if (newRows > 0) {
-                meta.size += newRows;
+                meta.count += newRows;
                 updateMetaInfo(key, meta);
             }
         }
@@ -215,7 +215,7 @@ public class Database implements IDatabase {
         final byte[] fullKey = Encoding.encodeDataMapFieldKey(meta.id, field);
         final byte[] oldValue = dbGet(fullKey);
         if (oldValue != null) {
-            meta.size--;
+            meta.count--;
             dbDelete(fullKey);
             updateMetaInfo(key, meta);
         }
@@ -234,8 +234,8 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public long mapSize(final byte[] key) {
-        return getSize(key);
+    public long mapCount(final byte[] key) {
+        return getCount(key);
     }
 
     @Override
@@ -247,7 +247,7 @@ public class Database implements IDatabase {
                 final byte[] fullKey = Encoding.encodeDataListKey(meta.id, extra.left--);
                 dbPut(fullKey, value);
             }
-            meta.size += values.length;
+            meta.count += values.length;
             meta.extra = extra.toBytes();
             updateMetaInfo(key, meta);
         }
@@ -263,7 +263,7 @@ public class Database implements IDatabase {
                 final byte[] fullKey = Encoding.encodeDataListKey(meta.id, extra.right++);
                 dbPut(fullKey, value);
             }
-            meta.size += values.length;
+            meta.count += values.length;
             meta.extra = extra.toBytes();
             updateMetaInfo(key, meta);
         }
@@ -271,8 +271,8 @@ public class Database implements IDatabase {
     }
 
     @Override
-    public long listSize(final byte[] key) {
-        return getSize(key);
+    public long listCount(final byte[] key) {
+        return getCount(key);
     }
 
     @Override
@@ -285,7 +285,7 @@ public class Database implements IDatabase {
         final byte[] fullKey = Encoding.encodeDataListKey(meta.id, ++extra.left);
         final byte[] value = dbGet(fullKey);
         if (value != null) {
-            meta.size--;
+            meta.count--;
             meta.extra = extra.toBytes();
             updateMetaInfo(key, meta);
             dbDelete(fullKey);
@@ -303,7 +303,7 @@ public class Database implements IDatabase {
         final byte[] fullKey = Encoding.encodeDataListKey(meta.id, --extra.right);
         final byte[] value = dbGet(fullKey);
         if (value != null) {
-            meta.size--;
+            meta.count--;
             meta.extra = extra.toBytes();
             updateMetaInfo(key, meta);
             dbDelete(fullKey);
@@ -335,7 +335,7 @@ public class Database implements IDatabase {
             dbPut(fullKey, new byte[]{});
         }
         if (newRows > 0) {
-            meta.size += newRows;
+            meta.count += newRows;
             updateMetaInfo(key, meta);
         }
         return newRows;
@@ -373,15 +373,15 @@ public class Database implements IDatabase {
             }
         }
         if (deleteRows > 0) {
-            meta.size -= deleteRows;
+            meta.count -= deleteRows;
             updateMetaInfo(key, meta);
         }
         return deleteRows;
     }
 
     @Override
-    public long setSize(final byte[] key) {
-        return getSize(key);
+    public long setCount(final byte[] key) {
+        return getCount(key);
     }
 
     @Override
@@ -404,14 +404,14 @@ public class Database implements IDatabase {
             dbPut(fullKey, items[i].value);
         }
         meta.extra = Encoding.longToBytes(seq);
-        meta.size += items.length;
+        meta.count += items.length;
         updateMetaInfo(key, meta);
         return items.length;
     }
 
     @Override
-    public long sortedListSize(final byte[] key) {
-        return getSize(key);
+    public long sortedListCount(final byte[] key) {
+        return getCount(key);
     }
 
     @Override
@@ -431,7 +431,7 @@ public class Database implements IDatabase {
             final byte[] score = Encoding.decodeDataSortedListKey(first.getKey());
             if (maxScore == null || Encoding.compareScoreBytes(score, maxScore) < 1) {
                 dbDelete(first.getKey());
-                meta.size--;
+                meta.count--;
                 updateMetaInfo(key, meta);
                 return Optional.of(SortedListItem.of(score, first.getValue()));
             } else {
@@ -463,7 +463,7 @@ public class Database implements IDatabase {
             final byte[] score = Encoding.decodeDataSortedListKey(last.getKey());
             if (minScore == null || Encoding.compareScoreBytes(score, minScore) >= 0) {
                 dbDelete(last.getKey());
-                meta.size--;
+                meta.count--;
                 updateMetaInfo(key, meta);
                 return Optional.of(SortedListItem.of(score, last.getValue()));
             } else {

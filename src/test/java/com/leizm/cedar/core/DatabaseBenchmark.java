@@ -32,9 +32,9 @@ public class DatabaseBenchmark {
                 db.mapGet(key, v);
             }
         });
-        runTestCase("db.mapSize", COUNT, count -> {
+        runTestCase("db.mapCount", COUNT, count -> {
             for (int i = 0; i < count; i++) {
-                db.mapSize(key);
+                db.mapCount(key);
             }
         });
         runTestCase("db.mapRemove", COUNT, count -> {
@@ -61,9 +61,9 @@ public class DatabaseBenchmark {
                 db.setIsMember(key, v);
             }
         });
-        runTestCase("db.setSize", COUNT, count -> {
+        runTestCase("db.setCount", COUNT, count -> {
             for (int i = 0; i < count; i++) {
-                db.setSize(key);
+                db.setCount(key);
             }
         });
         runTestCase("db.setRemove", COUNT, count -> {
@@ -90,9 +90,9 @@ public class DatabaseBenchmark {
                 db.listRightPush(key, v);
             }
         });
-        runTestCase("db.listSize", COUNT, count -> {
+        runTestCase("db.listCount", COUNT, count -> {
             for (int i = 0; i < count; i++) {
-                db.listSize(key);
+                db.listCount(key);
             }
         });
         runTestCase("db.listLeftPop", COUNT, count -> {
@@ -117,9 +117,9 @@ public class DatabaseBenchmark {
                 db.sortedListAdd(key, SortedListItem.of(v, v));
             }
         });
-        runTestCase("db.sortedListSize", COUNT, count -> {
+        runTestCase("db.sortedListCount", COUNT, count -> {
             for (int i = 0; i < count; i++) {
-                db.sortedListSize(key);
+                db.sortedListCount(key);
             }
         });
         runTestCase("db.sortedListLeftPop", COUNT, count -> {

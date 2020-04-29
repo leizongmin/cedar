@@ -30,7 +30,9 @@ public class LRUCache<K, V> {
         }
         map.put(key, value);
         if (list.size() > capacity) {
-            list.subList(list.size() - capacity, list.size()).forEach(map::remove);
+            K oldKey = list.get(0);
+            list.remove(0);
+            map.remove(oldKey);
         }
     }
 

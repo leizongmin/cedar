@@ -21,13 +21,13 @@ public interface IDatabase {
         return list;
     }
 
-    long mapSize(byte[] key);
+    long mapCount(byte[] key);
 
     long listLeftPush(byte[] key, byte[]... values);
 
     long listRightPush(byte[] key, byte[]... values);
 
-    long listSize(byte[] key);
+    long listCount(byte[] key);
 
     Optional<byte[]> listLeftPop(byte[] key);
 
@@ -47,7 +47,7 @@ public interface IDatabase {
 
     long setRemove(byte[] key, byte[]... values);
 
-    long setSize(byte[] key);
+    long setCount(byte[] key);
 
     long setForEach(byte[] key, Consumer<byte[]> onItem);
 
@@ -59,7 +59,7 @@ public interface IDatabase {
 
     long sortedListAdd(byte[] key, SortedListItem[] items);
 
-    long sortedListSize(byte[] key);
+    long sortedListCount(byte[] key);
 
     Optional<SortedListItem> sortedListLeftPop(byte[] key, byte[] maxScore);
 

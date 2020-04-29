@@ -22,7 +22,6 @@ class DatabaseTest {
         });
     }
 
-
     @Test
     void testMap() {
         final Database db = TestUtil.createTempDatabase();
@@ -44,7 +43,7 @@ class DatabaseTest {
 
         assertEquals(1, db.mapPut(key, MapItem.of("a".getBytes(), "123".getBytes())));
         assertArrayEquals("123".getBytes(), db.mapGet(key, "a".getBytes()).get());
-        assertEquals(1, db.mapSize(key));
+        assertEquals(1, db.mapCount(key));
 
         assertEquals(3, db.mapPut(key,
                 MapItem.of("b".getBytes(), "qq".getBytes()),
@@ -57,12 +56,12 @@ class DatabaseTest {
 
         final List<String> values = db.mapItems(key).stream().map(item -> String.format("%s=%s", new String(item.field), new String(item.value))).collect(Collectors.toList());
         assertEquals(Arrays.asList("a=123", "b=qq", "c=xx", "d=zz"), values);
-        assertEquals(4, db.mapSize(key));
+        assertEquals(4, db.mapCount(key));
 
         assertEquals(Optional.empty(), db.mapRemove(key, "xzz".getBytes()));
         assertArrayEquals("123".getBytes(), db.mapRemove(key, "a".getBytes()).get());
         assertEquals(Optional.empty(), db.mapRemove(key, "a".getBytes()));
-        assertEquals(3, db.mapSize(key));
+        assertEquals(3, db.mapCount(key));
     }
 
     @Test
@@ -74,7 +73,7 @@ class DatabaseTest {
         // test forEachKeys
         final List<byte[]> list2 = new ArrayList<>();
         db.forEachKeys((key, meta) -> {
-            assertEquals(2, meta.size);
+            assertEquals(2, meta.count);
             list2.add(key);
         });
         assertEquals(new HashSet<>().addAll(list), new HashSet<>().addAll(list2));
@@ -89,14 +88,14 @@ class DatabaseTest {
         assertTrue(db.setIsMember(key, "a".getBytes()));
         assertTrue(db.setIsMember(key, "b".getBytes()));
         assertFalse(db.setIsMember(key, "c".getBytes()));
-        assertEquals(2, db.setSize(key));
+        assertEquals(2, db.setCount(key));
 
         assertEquals(1, db.setAdd(key, "a".getBytes(), "b".getBytes(), "c".getBytes()));
         assertTrue(db.setIsMember(key, "c".getBytes()));
-        assertEquals(3, db.setSize(key));
+        assertEquals(3, db.setCount(key));
 
         assertEquals(1, db.setRemove(key, "x".getBytes(), "c".getBytes()));
-        assertEquals(2, db.setSize(key));
+        assertEquals(2, db.setCount(key));
 
         final Object[] list = db.setMembers(key).stream().map(String::new).toArray();
         assertArrayEquals(new String[]{"a", "b"}, list);
@@ -120,29 +119,29 @@ class DatabaseTest {
         System.out.println("testSortedListForKey: " + new String(key));
 
         // test left
-        assertEquals(0, db.sortedListSize(key));
+        assertEquals(0, db.sortedListCount(key));
         assertEquals(2, db.sortedListAdd(key,
                 SortedListItem.of(Encoding.longToBytes(6), "aaa".getBytes()),
                 SortedListItem.of(Encoding.longToBytes(5), "bbb".getBytes())
         ));
-        assertEquals(2, db.sortedListSize(key));
+        assertEquals(2, db.sortedListCount(key));
         assertEquals("bbb", new String(db.sortedListLeftPop(key, null).get().value));
         assertEquals("aaa", new String(db.sortedListLeftPop(key, null).get().value));
-        assertEquals(0, db.sortedListSize(key));
+        assertEquals(0, db.sortedListCount(key));
         assertEquals(3, db.sortedListAdd(key,
                 SortedListItem.of(Encoding.longToBytes(2), "x".getBytes()),
                 SortedListItem.of(Encoding.longToBytes(1), "y".getBytes()),
                 SortedListItem.of(Encoding.longToBytes(1), "z".getBytes())
         ));
-        assertEquals(3, db.sortedListSize(key));
-        final List<SortedListItem> values = db.sortedListItems(key);
-        assertEquals(3, values.size());
-        assertEquals("y", new String(values.get(0).value));
-        assertEquals("z", new String(values.get(1).value));
-        assertEquals("x", new String(values.get(2).value));
-        assertEquals(1, Encoding.longFromBytes(values.get(0).score));
-        assertEquals(1, Encoding.longFromBytes(values.get(1).score));
-        assertEquals(2, Encoding.longFromBytes(values.get(2).score));
+        assertEquals(3, db.sortedListCount(key));
+        final List<SortedListItem> items = db.sortedListItems(key);
+        assertEquals(3, items.size());
+        assertEquals("y", new String(items.get(0).value));
+        assertEquals("z", new String(items.get(1).value));
+        assertEquals("x", new String(items.get(2).value));
+        assertEquals(1, Encoding.longFromBytes(items.get(0).score));
+        assertEquals(1, Encoding.longFromBytes(items.get(1).score));
+        assertEquals(2, Encoding.longFromBytes(items.get(2).score));
         assertEquals(Optional.empty(), db.sortedListLeftPop(key, Encoding.longToBytes(0)));
         assertEquals("y", new String(db.sortedListLeftPop(key, Encoding.longToBytes(1)).get().value));
         assertEquals("z", new String(db.sortedListLeftPop(key, Encoding.longToBytes(1)).get().value));
@@ -151,15 +150,15 @@ class DatabaseTest {
         assertEquals(Optional.empty(), db.sortedListLeftPop(key, Encoding.longToBytes(2)));
 
         // test right
-        assertEquals(0, db.sortedListSize(key));
+        assertEquals(0, db.sortedListCount(key));
         assertEquals(2, db.sortedListAdd(key,
                 SortedListItem.of(Encoding.longToBytes(6), "aaa".getBytes()),
                 SortedListItem.of(Encoding.longToBytes(5), "bbb".getBytes())
         ));
-        assertEquals(2, db.sortedListSize(key));
+        assertEquals(2, db.sortedListCount(key));
         assertEquals("aaa", new String(db.sortedListRightPop(key, null).get().value));
         assertEquals("bbb", new String(db.sortedListRightPop(key, null).get().value));
-        assertEquals(0, db.sortedListSize(key));
+        assertEquals(0, db.sortedListCount(key));
         assertEquals(3, db.sortedListAdd(key,
                 SortedListItem.of(Encoding.longToBytes(2), "x".getBytes()),
                 SortedListItem.of(Encoding.longToBytes(1), "y".getBytes()),
@@ -171,7 +170,7 @@ class DatabaseTest {
         assertEquals("z", new String(db.sortedListRightPop(key, Encoding.longToBytes(1)).get().value));
         assertEquals("y", new String(db.sortedListRightPop(key, Encoding.longToBytes(1)).get().value));
         assertEquals(Optional.empty(), db.sortedListRightPop(key, Encoding.longToBytes(1)));
-        assertEquals(0, db.sortedListSize(key));
+        assertEquals(0, db.sortedListCount(key));
     }
 
     @Test
@@ -191,30 +190,30 @@ class DatabaseTest {
     void testListForKey(final Database db, final byte[] key) {
         System.out.println("testListForKey: " + new String(key));
 
-        assertEquals(0, db.listSize(key));
+        assertEquals(0, db.listCount(key));
         assertEquals(2, db.listLeftPush(key, "a".getBytes(), "b".getBytes()));
-        assertEquals(2, db.listSize(key));
+        assertEquals(2, db.listCount(key));
         assertEquals(Arrays.asList("0=b", "1=a"),
                 db.listItems(key).stream().map(item -> String.format("%d=%s", item.index, new String(item.value))).collect(Collectors.toList()));
 
         assertEquals(3, db.listRightPush(key, "c".getBytes(), "d".getBytes(), "e".getBytes()));
-        assertEquals(5, db.listSize(key));
+        assertEquals(5, db.listCount(key));
         assertEquals(Arrays.asList("0=b", "1=a", "2=c", "3=d", "4=e"),
                 db.listItems(key).stream().map(item -> String.format("%d=%s", item.index, new String(item.value))).collect(Collectors.toList()));
 
-        final List<String> values = new ArrayList<>();
-        values.add(new String(db.listLeftPop(key).get()));
-        values.add(new String(db.listRightPop(key).get()));
-        values.add(new String(db.listLeftPop(key).get()));
-        values.add(new String(db.listRightPop(key).get()));
-        values.add(new String(db.listLeftPop(key).get()));
+        final List<String> items = new ArrayList<>();
+        items.add(new String(db.listLeftPop(key).get()));
+        items.add(new String(db.listRightPop(key).get()));
+        items.add(new String(db.listLeftPop(key).get()));
+        items.add(new String(db.listRightPop(key).get()));
+        items.add(new String(db.listLeftPop(key).get()));
         assertEquals(Optional.empty(), db.listLeftPop(key));
         assertEquals(Optional.empty(), db.listRightPop(key));
-        assertEquals(Arrays.asList("b", "e", "a", "d", "c"), values);
+        assertEquals(Arrays.asList("b", "e", "a", "d", "c"), items);
 
-        assertEquals(0, db.listSize(key));
+        assertEquals(0, db.listCount(key));
         assertEquals(2, db.listRightPush(key, "a".getBytes(), "b".getBytes()));
-        assertEquals(2, db.listSize(key));
+        assertEquals(2, db.listCount(key));
         assertEquals(Arrays.asList("0=a", "1=b"),
                 db.listItems(key).stream().map(item -> String.format("%d=%s", item.index, new String(item.value))).collect(Collectors.toList()));
     }
