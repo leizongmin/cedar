@@ -7,7 +7,7 @@ public class Encoding {
     public static final byte[] KEY_PREFIX_META = "m".getBytes();
     public static final byte[] KEY_PREFIX_DATA = "d".getBytes();
 
-    public static boolean isSamePrefix(final byte[] prefix, final byte[] key) {
+    public static boolean hasPrefix(final byte[] prefix, final byte[] key) {
         return Arrays.equals(prefix, Arrays.copyOfRange(key, 0, prefix.length));
     }
 

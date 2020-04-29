@@ -102,7 +102,7 @@ public class Database implements IDatabase {
             iter.seek(prefix);
             while (iter.hasNext()) {
                 final Map.Entry<byte[], byte[]> entry = iter.next();
-                if (!Encoding.isSamePrefix(prefix, entry.getKey())) {
+                if (!Encoding.hasPrefix(prefix, entry.getKey())) {
                     break;
                 }
                 onItem.accept(entry);
@@ -425,7 +425,7 @@ public class Database implements IDatabase {
                 return Optional.empty();
             }
             final Map.Entry<byte[], byte[]> first = iter.next();
-            if (!Encoding.isSamePrefix(prefix, first.getKey())) {
+            if (!Encoding.hasPrefix(prefix, first.getKey())) {
                 return Optional.empty();
             }
             final byte[] score = Encoding.decodeDataSortedListKey(first.getKey());
@@ -457,7 +457,7 @@ public class Database implements IDatabase {
                 return Optional.empty();
             }
             final Map.Entry<byte[], byte[]> last = iter.prev();
-            if (!Encoding.isSamePrefix(prefix, last.getKey())) {
+            if (!Encoding.hasPrefix(prefix, last.getKey())) {
                 return Optional.empty();
             }
             final byte[] score = Encoding.decodeDataSortedListKey(last.getKey());

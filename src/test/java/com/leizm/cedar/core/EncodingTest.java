@@ -8,9 +8,9 @@ public class EncodingTest {
 
     @Test
     public void testIsSamePrefix() {
-        assertTrue(Encoding.isSamePrefix("aa".getBytes(), "aa123".getBytes()));
-        assertTrue(Encoding.isSamePrefix("xxab".getBytes(), "xxabx".getBytes()));
-        assertFalse(Encoding.isSamePrefix("xxx".getBytes(), "xx".getBytes()));
+        assertTrue(Encoding.hasPrefix("aa".getBytes(), "aa123".getBytes()));
+        assertTrue(Encoding.hasPrefix("xxab".getBytes(), "xxabx".getBytes()));
+        assertFalse(Encoding.hasPrefix("xxx".getBytes(), "xx".getBytes()));
     }
 
     @Test
