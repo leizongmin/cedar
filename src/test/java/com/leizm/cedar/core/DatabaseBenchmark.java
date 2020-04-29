@@ -14,7 +14,7 @@ public class DatabaseBenchmark {
         long start = System.currentTimeMillis();
         fn.apply(count);
         long spent = System.currentTimeMillis() - start;
-        System.out.printf("%20s %d times,\tspent %6d ms,\t%6d op/s\n", title, count, spent, count / spent * 1000);
+        System.out.printf("%20s %d times,\tspent %6d ms,\t%8d op/s\n", title, count, spent, count / spent * 1000);
     }
 
     public static void testMap() {
