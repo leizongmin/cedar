@@ -11,6 +11,7 @@ import java.util.Map;
 public class TestUtil {
     private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
     public static List<Database> dbList = new ArrayList<>();
+    private static long generateRandomKeyCounter = 0;
 
     public static Database createTempDatabase() {
         String path = Paths.get(
@@ -59,5 +60,17 @@ public class TestUtil {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public static List<byte[]> generateRandomKeyList(int count) {
+        List<byte[]> list = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            list.add(generateRandomKey());
+        }
+        return list;
+    }
+
+    public static byte[] generateRandomKey() {
+        return String.format("key-%d-%d", System.currentTimeMillis(), generateRandomKeyCounter++).getBytes();
     }
 }

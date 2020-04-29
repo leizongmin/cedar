@@ -22,18 +22,11 @@ class DatabaseTest {
         });
     }
 
-    static List<byte[]> generateRandomKeyList(int count) {
-        List<byte[]> list = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            list.add(String.format("key-%d-%d", System.currentTimeMillis(), i).getBytes());
-        }
-        return list;
-    }
 
     @Test
     void testMap() {
         final Database db = TestUtil.createTempDatabase();
-        final List<byte[]> list = generateRandomKeyList(10);
+        final List<byte[]> list = TestUtil.generateRandomKeyList(10);
         list.forEach(key -> testMapForKey(db, key));
 
         // test forEachKeys
@@ -75,7 +68,7 @@ class DatabaseTest {
     @Test
     void testSet() {
         final Database db = TestUtil.createTempDatabase();
-        final List<byte[]> list = generateRandomKeyList(10);
+        final List<byte[]> list = TestUtil.generateRandomKeyList(10);
         list.forEach(key -> testSetForKey(db, key));
 
         // test forEachKeys
@@ -112,7 +105,7 @@ class DatabaseTest {
     @Test
     void testSortedList() {
         final Database db = TestUtil.createTempDatabase();
-        final List<byte[]> list = generateRandomKeyList(10);
+        final List<byte[]> list = TestUtil.generateRandomKeyList(10);
         list.forEach(key -> testSortedListForKey(db, key));
 
         // test forEachKeys
@@ -184,7 +177,7 @@ class DatabaseTest {
     @Test
     void testList() {
         final Database db = TestUtil.createTempDatabase();
-        final List<byte[]> list = generateRandomKeyList(10);
+        final List<byte[]> list = TestUtil.generateRandomKeyList(10);
         list.forEach(key -> testListForKey(db, key));
 
         // test forEachKeys
