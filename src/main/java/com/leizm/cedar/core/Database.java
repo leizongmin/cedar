@@ -30,6 +30,8 @@ public class Database implements IDatabase {
      */
     protected long nextKeyId = 0;
 
+    protected LRUCache<String, MetaInfo> metaInfoCache;
+
     /**
      * open database
      *
@@ -38,8 +40,10 @@ public class Database implements IDatabase {
      * @throws IOException
      */
     public Database(String path, Options options) throws IOException {
-        db = factory.open(Paths.get(path).toFile(), Options.getOrDefaultLevelDBOptions(options));
+        options = options == null ? new Options() : options;
+        db = factory.open(Paths.get(path).toFile(), options.getLevelDBOptions());
         this.path = path;
+        this.metaInfoCache = new LRUCache<>(options.metaInfoCacheCount);
         initAfterOpen();
     }
 
@@ -143,22 +147,30 @@ public class Database implements IDatabase {
     }
 
     protected MetaInfo getOrCreateKeyMeta(byte[] key, KeyType type) {
+        final String cacheKey = new String(key);
+        MetaInfo meta = metaInfoCache.get(cacheKey);
+        if (meta != null) {
+            return meta;
+        }
         final byte[] fullKey = Encoding.encodeMetaKey(key);
-        MetaInfo meta = MetaInfo.fromBytes(dbGet(fullKey));
+        meta = MetaInfo.fromBytes(dbGet(fullKey));
         if (meta == null) {
             meta = new MetaInfo(nextKeyId++, type, 0, null);
             dbPut(fullKey, meta.toBytes());
         } else if (!meta.type.equals(type)) {
             throw new IllegalArgumentException(String.format("expected type %s but actually %s", type.name(), meta.type.name()));
         }
+        metaInfoCache.put(cacheKey, meta);
         return meta;
     }
 
     protected void updateMetaInfo(byte[] key, MetaInfo meta) {
         if (meta.size > 0) {
+            metaInfoCache.put(new String(key), meta);
             dbPut(Encoding.encodeMetaKey(key), meta.toBytes());
         } else {
             // delete key if size is 0
+            metaInfoCache.remove(new String(key));
             dbDelete(Encoding.encodeMetaKey(key));
         }
     }
