@@ -1,76 +1,20 @@
 package com.leizm.cedar.core;
 
-import org.iq80.leveldb.DBIterator;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-
 class DatabaseTest {
-
-    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
-    static List<Database> dbList = new ArrayList<>();
-
-    static Database createTempDatabase() {
-        String path = Paths.get(
-                System.getProperty("java.io.tmpdir"),
-                String.format("cedar-test-%d-%d", dbList.size(), System.currentTimeMillis())
-        ).toAbsolutePath().toString();
-        return createTempDatabase(path);
-    }
-
-    static Database createTempDatabase(String path) {
-        try {
-            System.out.printf("create database on path: %s\n", path);
-            Database db = new Database(path);
-            dbList.add(db);
-            return db;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    public static String bytesToHex(byte[] bytes) {
-        char[] hexChars = new char[bytes.length * 2];
-        for (int j = 0; j < bytes.length; j++) {
-            int v = bytes[j] & 0xFF;
-            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
-        }
-        return new String(hexChars);
-    }
-
-    static void dumpDatabase(Database db) {
-        System.out.println("==================== dumpDatabase ====================");
-        System.out.println("path: " + db.getPath());
-        DBIterator iter = db.getDb().iterator();
-        iter.seekToFirst();
-        while (iter.hasNext()) {
-            final Map.Entry<byte[], byte[]> entry = iter.next();
-            System.out.printf("%s (%s) = %s (%s) \n",
-                    bytesToHex(entry.getKey()), new String(entry.getKey()),
-                    bytesToHex(entry.getValue()), new String(entry.getValue()));
-        }
-        System.out.println();
-        try {
-            iter.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     @AfterAll
     static void cleanup() {
-        dbList.forEach(db -> {
+        TestUtil.dbList.forEach(db -> {
             try {
-                dumpDatabase(db);
+                TestUtil.dumpDatabase(db);
                 db.close();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -88,7 +32,7 @@ class DatabaseTest {
 
     @Test
     void testMap() {
-        final Database db = createTempDatabase();
+        final Database db = TestUtil.createTempDatabase();
         final List<byte[]> list = generateRandomKeyList(10);
         list.forEach(key -> testMapForKey(db, key));
 
@@ -130,7 +74,7 @@ class DatabaseTest {
 
     @Test
     void testSet() {
-        final Database db = createTempDatabase();
+        final Database db = TestUtil.createTempDatabase();
         final List<byte[]> list = generateRandomKeyList(10);
         list.forEach(key -> testSetForKey(db, key));
 
@@ -167,7 +111,7 @@ class DatabaseTest {
 
     @Test
     void testSortedList() {
-        final Database db = createTempDatabase();
+        final Database db = TestUtil.createTempDatabase();
         final List<byte[]> list = generateRandomKeyList(10);
         list.forEach(key -> testSortedListForKey(db, key));
 
@@ -239,7 +183,7 @@ class DatabaseTest {
 
     @Test
     void testList() {
-        final Database db = createTempDatabase();
+        final Database db = TestUtil.createTempDatabase();
         final List<byte[]> list = generateRandomKeyList(10);
         list.forEach(key -> testListForKey(db, key));
 
