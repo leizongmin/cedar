@@ -11,7 +11,7 @@ public class Options {
         if (rocksDBOptions == null) {
             org.rocksdb.Options options = new org.rocksdb.Options();
             options.setCreateIfMissing(true);
-            options.setCompressionType(CompressionType.SNAPPY_COMPRESSION);
+            options.setCompressionType(CompressionType.LZ4_COMPRESSION);
             options.setWriteBufferSize(1024 * 1024 * 4);
             options.setRowCache(new LRUCache(1024 * 1024 * 20));
             rocksDBOptions = options;
