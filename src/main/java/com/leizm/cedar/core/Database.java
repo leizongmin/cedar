@@ -89,22 +89,19 @@ public class Database implements IDatabase {
     }
 
     protected long prefixForEach(final byte[] prefix, final Consumer<RocksIterator> onItem) {
-        RocksIterator iter = dbIter(readOptions -> {
-            readOptions.setPrefixSameAsStart(true);
-        });
         long count = 0;
-        try {
-            iter.seek(prefix);
-            while (iter.isValid()) {
-                if (!Encoding.hasPrefix(prefix, iter.key())) {
+        try (final RocksIterator it = dbIterator(readOptions -> {
+            readOptions.setPrefixSameAsStart(true);
+        })) {
+            it.seek(prefix);
+            while (it.isValid()) {
+                if (!Encoding.hasPrefix(prefix, it.key())) {
                     break;
                 }
-                onItem.accept(iter);
+                onItem.accept(it);
                 count++;
-                iter.next();
+                it.next();
             }
-        } finally {
-            iter.close();
         }
         return count;
     }
@@ -113,7 +110,7 @@ public class Database implements IDatabase {
         return new Slice(key);
     }
 
-    protected RocksIterator dbIter(Consumer<ReadOptions> setup) {
+    protected RocksIterator dbIterator(Consumer<ReadOptions> setup) {
         final ReadOptions readOptions = new ReadOptions();
         if (setup != null) {
             setup.accept(readOptions);
@@ -425,30 +422,27 @@ public class Database implements IDatabase {
     public synchronized Optional<SortedListItem> sortedListLeftPop(final byte[] key, final byte[] maxScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
         final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
-        final RocksIterator iter = dbIter(readOptions -> {
+        try (final RocksIterator it = dbIterator(readOptions -> {
             readOptions.setPrefixSameAsStart(true);
             readOptions.setBackgroundPurgeOnIteratorCleanup(true);
             readOptions.setPinData(true);
-        });
-        try {
-            iter.seek(prefix);
-            if (!iter.isValid()) {
+        })) {
+            it.seek(prefix);
+            if (!it.isValid()) {
                 return Optional.empty();
             }
-            if (!Encoding.hasPrefix(prefix, iter.key())) {
+            if (!Encoding.hasPrefix(prefix, it.key())) {
                 return Optional.empty();
             }
-            final byte[] score = Encoding.decodeDataSortedListKey(iter.key());
+            final byte[] score = Encoding.decodeDataSortedListKey(it.key());
             if (maxScore == null || Encoding.compareScoreBytes(score, maxScore) < 1) {
-                dbDelete(iter.key());
+                dbDelete(it.key());
                 meta.count--;
                 updateMetaInfo(key, meta);
-                return Optional.of(SortedListItem.of(score, iter.value()));
+                return Optional.of(SortedListItem.of(score, it.value()));
             } else {
                 return Optional.empty();
             }
-        } finally {
-            iter.close();
         }
     }
 
@@ -456,30 +450,27 @@ public class Database implements IDatabase {
     public synchronized Optional<SortedListItem> sortedListRightPop(final byte[] key, final byte[] minScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
         final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
-        final RocksIterator iter = dbIter(readOptions -> {
+        try (final RocksIterator it = dbIterator(readOptions -> {
             readOptions.setPrefixSameAsStart(true);
             readOptions.setBackgroundPurgeOnIteratorCleanup(true);
             readOptions.setPinData(true);
-        });
-        try {
-            iter.seekForPrev(Encoding.encodeDataSortedListPrefixKey(meta.id + 1));
-            if (!iter.isValid()) {
+        })) {
+            it.seekForPrev(Encoding.encodeDataSortedListPrefixKey(meta.id + 1));
+            if (!it.isValid()) {
                 return Optional.empty();
             }
-            if (!Encoding.hasPrefix(prefix, iter.key())) {
+            if (!Encoding.hasPrefix(prefix, it.key())) {
                 return Optional.empty();
             }
-            final byte[] score = Encoding.decodeDataSortedListKey(iter.key());
+            final byte[] score = Encoding.decodeDataSortedListKey(it.key());
             if (minScore == null || Encoding.compareScoreBytes(score, minScore) >= 0) {
-                dbDelete(iter.key());
+                dbDelete(it.key());
                 meta.count--;
                 updateMetaInfo(key, meta);
-                return Optional.of(SortedListItem.of(score, iter.value()));
+                return Optional.of(SortedListItem.of(score, it.value()));
             } else {
                 return Optional.empty();
             }
-        } finally {
-            iter.close();
         }
     }
 
