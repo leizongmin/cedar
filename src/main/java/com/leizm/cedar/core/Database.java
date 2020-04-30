@@ -89,7 +89,9 @@ public class Database implements IDatabase {
     }
 
     protected long prefixForEach(final byte[] prefix, final Consumer<RocksIterator> onItem) {
-        RocksIterator iter = dbIter(toDBSlice(Encoding.prefixLowerBound(prefix)), toDBSlice(Encoding.prefixUpperBound(prefix)));
+        RocksIterator iter = dbIter(readOptions -> {
+            readOptions.setPrefixSameAsStart(true);
+        });
         long count = 0;
         try {
             iter.seek(prefix);
@@ -111,14 +113,10 @@ public class Database implements IDatabase {
         return new Slice(key);
     }
 
-    protected RocksIterator dbIter(Slice lower, Slice upper) {
+    protected RocksIterator dbIter(Consumer<ReadOptions> setup) {
         final ReadOptions readOptions = new ReadOptions();
-        readOptions.setFillCache(false);
-        if (lower != null) {
-            readOptions.setIterateLowerBound(lower);
-        }
-        if (upper != null) {
-            readOptions.setIterateUpperBound(upper);
+        if (setup != null) {
+            setup.accept(readOptions);
         }
         return db.newIterator(readOptions);
     }
@@ -427,7 +425,11 @@ public class Database implements IDatabase {
     public synchronized Optional<SortedListItem> sortedListLeftPop(final byte[] key, final byte[] maxScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
         final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
-        final RocksIterator iter = dbIter(toDBSlice(Encoding.prefixLowerBound(prefix)), toDBSlice(Encoding.prefixUpperBound(prefix)));
+        final RocksIterator iter = dbIter(readOptions -> {
+            readOptions.setPrefixSameAsStart(true);
+            readOptions.setBackgroundPurgeOnIteratorCleanup(true);
+            readOptions.setPinData(true);
+        });
         try {
             iter.seek(prefix);
             if (!iter.isValid()) {
@@ -454,7 +456,11 @@ public class Database implements IDatabase {
     public synchronized Optional<SortedListItem> sortedListRightPop(final byte[] key, final byte[] minScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
         final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
-        final RocksIterator iter = dbIter(toDBSlice(Encoding.prefixLowerBound(prefix)), toDBSlice(Encoding.prefixUpperBound(prefix)));
+        final RocksIterator iter = dbIter(readOptions -> {
+            readOptions.setPrefixSameAsStart(true);
+            readOptions.setBackgroundPurgeOnIteratorCleanup(true);
+            readOptions.setPinData(true);
+        });
         try {
             iter.seekForPrev(Encoding.encodeDataSortedListPrefixKey(meta.id + 1));
             if (!iter.isValid()) {
