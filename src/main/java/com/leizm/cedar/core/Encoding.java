@@ -12,16 +12,11 @@ public class Encoding {
     }
 
     public static byte[] longToBytes(final long v) {
-        final ByteBuffer b = ByteBuffer.allocate(8);
-        b.putLong(v);
-        return b.array();
+        return ByteBuffer.allocate(8).putLong(v).array();
     }
 
     public static long longFromBytes(final byte[] bytes) {
-        final ByteBuffer b = ByteBuffer.allocate(8);
-        b.put(Arrays.copyOf(bytes, 8));
-        b.flip();
-        return b.getLong();
+        return ByteBuffer.wrap(bytes).getLong();
     }
 
     public static byte[] combineMultipleBytes(final byte[]... list) {
@@ -101,10 +96,7 @@ public class Encoding {
     }
 
     public static long comparableLongFromBytes(final byte[] bytes) {
-        final ByteBuffer b = ByteBuffer.allocate(8);
-        b.put(Arrays.copyOfRange(bytes, 1, 9));
-        b.flip();
-        return b.getLong();
+        return ByteBuffer.wrap(bytes, 1, 8).getLong();
     }
 
     private static int[] bytesToUnsignedInts(final byte[] bytes) {
