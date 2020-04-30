@@ -1,8 +1,6 @@
 package com.leizm.cedar.core;
 
-import org.rocksdb.RocksDB;
-import org.rocksdb.RocksDBException;
-import org.rocksdb.RocksIterator;
+import org.rocksdb.*;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -91,7 +89,7 @@ public class Database implements IDatabase {
     }
 
     protected long prefixForEach(final byte[] prefix, final Consumer<RocksIterator> onItem) {
-        RocksIterator iter = dbIter();
+        RocksIterator iter = dbIter(toDBSlice(Encoding.prefixLowerBound(prefix)), toDBSlice(Encoding.prefixUpperBound(prefix)));
         long count = 0;
         try {
             iter.seek(prefix);
@@ -109,8 +107,20 @@ public class Database implements IDatabase {
         return count;
     }
 
-    protected RocksIterator dbIter() {
-        return db.newIterator();
+    protected Slice toDBSlice(final byte[] key) {
+        return new Slice(key);
+    }
+
+    protected RocksIterator dbIter(Slice lower, Slice upper) {
+        final ReadOptions readOptions = new ReadOptions();
+        readOptions.setFillCache(false);
+        if (lower != null) {
+            readOptions.setIterateLowerBound(lower);
+        }
+        if (upper != null) {
+            readOptions.setIterateUpperBound(upper);
+        }
+        return db.newIterator(readOptions);
     }
 
     protected byte[] dbGet(byte[] key) {
@@ -417,7 +427,7 @@ public class Database implements IDatabase {
     public synchronized Optional<SortedListItem> sortedListLeftPop(final byte[] key, final byte[] maxScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
         final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
-        final RocksIterator iter = dbIter();
+        final RocksIterator iter = dbIter(toDBSlice(Encoding.prefixLowerBound(prefix)), toDBSlice(Encoding.prefixUpperBound(prefix)));
         try {
             iter.seek(prefix);
             if (!iter.isValid()) {
@@ -444,7 +454,7 @@ public class Database implements IDatabase {
     public synchronized Optional<SortedListItem> sortedListRightPop(final byte[] key, final byte[] minScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
         final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
-        final RocksIterator iter = dbIter();
+        final RocksIterator iter = dbIter(toDBSlice(Encoding.prefixLowerBound(prefix)), toDBSlice(Encoding.prefixUpperBound(prefix)));
         try {
             iter.seekForPrev(Encoding.encodeDataSortedListPrefixKey(meta.id + 1));
             if (!iter.isValid()) {

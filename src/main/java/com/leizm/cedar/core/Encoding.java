@@ -106,4 +106,68 @@ public class Encoding {
         b.flip();
         return b.getLong();
     }
+
+    private static int[] bytesToUnsignedInts(final byte[] bytes) {
+        final int[] ints = new int[bytes.length];
+        for (int i = 0; i < bytes.length; i++) {
+            ints[i] = Byte.toUnsignedInt(bytes[i]);
+        }
+        return ints;
+    }
+
+    private static byte[] unsignedIntsToBytes(final int[] ints) {
+        final byte[] bytes = new byte[ints.length];
+        for (int i = 0; i < ints.length; i++) {
+            bytes[i] = (byte) ints[i];
+        }
+        return bytes;
+    }
+
+    public static byte[] prefixLowerBound(final byte[] prefix) {
+        if (prefix.length < 1) {
+            return null;
+        }
+        final int[] bytes = bytesToUnsignedInts(prefix);
+        int i = bytes.length - 1;
+        bytes[i]--;
+        if (i > 0 && bytes[i] < 0) {
+            bytes[i] = 255;
+            bytes[--i]--;
+        }
+        for (; i > 0; i--) {
+            if (bytes[i] < 0) {
+                bytes[i] = 255;
+                bytes[i - 1]--;
+            }
+        }
+
+        if (bytes[0] < 0) {
+            return null;
+        }
+        return unsignedIntsToBytes(bytes);
+    }
+
+    public static byte[] prefixUpperBound(final byte[] prefix) {
+        if (prefix.length < 1) {
+            return null;
+        }
+        final int[] bytes = bytesToUnsignedInts(prefix);
+        int i = bytes.length - 1;
+        bytes[i]++;
+        if (i > 0 && bytes[i] > 255) {
+            bytes[i] = 0;
+            bytes[--i]++;
+        }
+        for (; i > 0; i--) {
+            if (bytes[i] > 255) {
+                bytes[i] = 0;
+                bytes[i - 1]++;
+            }
+        }
+
+        if (bytes[0] > 255) {
+            return null;
+        }
+        return unsignedIntsToBytes(bytes);
+    }
 }
