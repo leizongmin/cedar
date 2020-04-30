@@ -90,17 +90,20 @@ public class Database implements IDatabase {
 
     protected long prefixForEach(final byte[] prefix, final Consumer<RocksIterator> onItem) {
         long count = 0;
-        try (final RocksIterator it = dbIterator(readOptions -> {
-            readOptions.setPrefixSameAsStart(true);
+        try (final ReadOptions readOptions = dbReadOptions(o -> {
+            o.setPrefixSameAsStart(true);
+            o.setTotalOrderSeek(false);
         })) {
-            it.seek(prefix);
-            while (it.isValid()) {
-                if (!Encoding.hasPrefix(prefix, it.key())) {
-                    break;
+            try (final RocksIterator it = dbIterator(readOptions)) {
+                it.seek(prefix);
+                while (it.isValid()) {
+                    if (!Encoding.hasPrefix(prefix, it.key())) {
+                        break;
+                    }
+                    onItem.accept(it);
+                    count++;
+                    it.next();
                 }
-                onItem.accept(it);
-                count++;
-                it.next();
             }
         }
         return count;
@@ -110,12 +113,16 @@ public class Database implements IDatabase {
         return new Slice(key);
     }
 
-    protected RocksIterator dbIterator(Consumer<ReadOptions> setup) {
+    protected ReadOptions dbReadOptions(Consumer<ReadOptions> setup) {
         final ReadOptions readOptions = new ReadOptions();
         if (setup != null) {
             setup.accept(readOptions);
         }
-        return db.newIterator(readOptions);
+        return readOptions;
+    }
+
+    protected RocksIterator dbIterator(ReadOptions readOptions) {
+        return readOptions == null ? db.newIterator() : db.newIterator(readOptions);
     }
 
     protected byte[] dbGet(byte[] key) {
@@ -422,26 +429,27 @@ public class Database implements IDatabase {
     public synchronized Optional<SortedListItem> sortedListLeftPop(final byte[] key, final byte[] maxScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
         final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
-        try (final RocksIterator it = dbIterator(readOptions -> {
-            readOptions.setPrefixSameAsStart(true);
-            readOptions.setBackgroundPurgeOnIteratorCleanup(true);
-            readOptions.setPinData(true);
+        try (final ReadOptions readOptions = dbReadOptions(o -> {
+            o.setPrefixSameAsStart(true);
+            o.setTotalOrderSeek(false);
         })) {
-            it.seek(prefix);
-            if (!it.isValid()) {
-                return Optional.empty();
-            }
-            if (!Encoding.hasPrefix(prefix, it.key())) {
-                return Optional.empty();
-            }
-            final byte[] score = Encoding.decodeDataSortedListKey(it.key());
-            if (maxScore == null || Encoding.compareScoreBytes(score, maxScore) < 1) {
-                dbDelete(it.key());
-                meta.count--;
-                updateMetaInfo(key, meta);
-                return Optional.of(SortedListItem.of(score, it.value()));
-            } else {
-                return Optional.empty();
+            try (final RocksIterator it = dbIterator(readOptions)) {
+                it.seek(prefix);
+                if (!it.isValid()) {
+                    return Optional.empty();
+                }
+                if (!Encoding.hasPrefix(prefix, it.key())) {
+                    return Optional.empty();
+                }
+                final byte[] score = Encoding.decodeDataSortedListKey(it.key());
+                if (maxScore == null || Encoding.compareScoreBytes(score, maxScore) < 1) {
+                    dbDelete(it.key());
+                    meta.count--;
+                    updateMetaInfo(key, meta);
+                    return Optional.of(SortedListItem.of(score, it.value()));
+                } else {
+                    return Optional.empty();
+                }
             }
         }
     }
@@ -450,26 +458,27 @@ public class Database implements IDatabase {
     public synchronized Optional<SortedListItem> sortedListRightPop(final byte[] key, final byte[] minScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
         final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
-        try (final RocksIterator it = dbIterator(readOptions -> {
-            readOptions.setPrefixSameAsStart(true);
-            readOptions.setBackgroundPurgeOnIteratorCleanup(true);
-            readOptions.setPinData(true);
+        try (final ReadOptions readOptions = dbReadOptions(o -> {
+            o.setPrefixSameAsStart(true);
+            o.setTotalOrderSeek(false);
         })) {
-            it.seekForPrev(Encoding.encodeDataSortedListPrefixKey(meta.id + 1));
-            if (!it.isValid()) {
-                return Optional.empty();
-            }
-            if (!Encoding.hasPrefix(prefix, it.key())) {
-                return Optional.empty();
-            }
-            final byte[] score = Encoding.decodeDataSortedListKey(it.key());
-            if (minScore == null || Encoding.compareScoreBytes(score, minScore) >= 0) {
-                dbDelete(it.key());
-                meta.count--;
-                updateMetaInfo(key, meta);
-                return Optional.of(SortedListItem.of(score, it.value()));
-            } else {
-                return Optional.empty();
+            try (final RocksIterator it = dbIterator(readOptions)) {
+                it.seekForPrev(Encoding.encodeDataSortedListPrefixKey(meta.id + 1));
+                if (!it.isValid()) {
+                    return Optional.empty();
+                }
+                if (!Encoding.hasPrefix(prefix, it.key())) {
+                    return Optional.empty();
+                }
+                final byte[] score = Encoding.decodeDataSortedListKey(it.key());
+                if (minScore == null || Encoding.compareScoreBytes(score, minScore) >= 0) {
+                    dbDelete(it.key());
+                    meta.count--;
+                    updateMetaInfo(key, meta);
+                    return Optional.of(SortedListItem.of(score, it.value()));
+                } else {
+                    return Optional.empty();
+                }
             }
         }
     }
