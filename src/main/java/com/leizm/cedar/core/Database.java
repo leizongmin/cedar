@@ -1,24 +1,19 @@
 package com.leizm.cedar.core;
 
-import org.iq80.leveldb.DB;
-import org.iq80.leveldb.DBException;
-import org.iq80.leveldb.DBIterator;
+import org.rocksdb.RocksDB;
+import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
 
 import java.io.IOException;
-import java.nio.file.Paths;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-
-import static org.fusesource.leveldbjni.JniDBFactory.factory;
-
 
 public class Database implements IDatabase {
     /**
      * LevelDB database instance
      */
-    protected DB db;
+    protected RocksDB db;
 
     /**
      * database path
@@ -39,9 +34,9 @@ public class Database implements IDatabase {
      * @param options options
      * @throws IOException
      */
-    public Database(String path, Options options) throws IOException {
+    public Database(String path, Options options) throws RocksDBException {
         options = options == null ? new Options() : options;
-        db = factory.open(Paths.get(path).toFile(), options.getLevelDBOptions());
+        this.db = RocksDB.open(options.getRocksDBOptions(), path);
         this.path = path;
         this.metaInfoCache = new LRUCache<>(options.metaInfoCacheCount);
         initAfterOpen();
@@ -53,7 +48,7 @@ public class Database implements IDatabase {
      * @param path store path
      * @throws IOException
      */
-    public Database(String path) throws IOException {
+    public Database(String path) throws RocksDBException {
         this(path, null);
     }
 
@@ -62,7 +57,7 @@ public class Database implements IDatabase {
      *
      * @return
      */
-    public DB getDb() {
+    public RocksDB getDb() {
         return db;
     }
 
@@ -84,10 +79,10 @@ public class Database implements IDatabase {
         db.close();
     }
 
-    protected void initAfterOpen() throws IOException {
+    protected void initAfterOpen() {
         final Box<Long> maxKeyId = Box.of(1L);
         prefixForEach(Encoding.KEY_PREFIX_META, (entry -> {
-            final MetaInfo meta = MetaInfo.fromBytes(entry.getValue());
+            final MetaInfo meta = MetaInfo.fromBytes(entry.value());
             if (meta.id > maxKeyId.value) {
                 maxKeyId.value = meta.id;
             }
@@ -95,50 +90,54 @@ public class Database implements IDatabase {
         nextKeyId = maxKeyId.value + 1;
     }
 
-    protected long prefixForEach(final byte[] prefix, final Consumer<Map.Entry<byte[], byte[]>> onItem) {
-        DBIterator iter = dbIter();
+    protected long prefixForEach(final byte[] prefix, final Consumer<RocksIterator> onItem) {
+        RocksIterator iter = dbIter();
         long count = 0;
         try {
             iter.seek(prefix);
-            while (iter.hasNext()) {
-                final Map.Entry<byte[], byte[]> entry = iter.next();
-                if (!Encoding.hasPrefix(prefix, entry.getKey())) {
+            while (iter.isValid()) {
+                if (!Encoding.hasPrefix(prefix, iter.key())) {
                     break;
                 }
-                onItem.accept(entry);
+                onItem.accept(iter);
                 count++;
+                iter.next();
             }
         } finally {
-            try {
-                iter.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            iter.close();
         }
         return count;
     }
 
-    protected DBIterator dbIter() {
-        return db.iterator();
+    protected RocksIterator dbIter() {
+        return db.newIterator();
     }
 
     protected byte[] dbGet(byte[] key) {
         // System.out.printf("GET %s\n", new String(key));
         try {
             return db.get(key);
-        } catch (DBException e) {
+        } catch (RocksDBException e) {
             return null;
         }
     }
 
     protected void dbPut(byte[] key, byte[] value) {
         // System.out.printf("PUT %s = %s\n", new String(key), new String(value));
-        db.put(key, value);
+        try {
+            db.put(key, value);
+        } catch (RocksDBException e) {
+            e.printStackTrace();
+        }
     }
 
     protected void dbDelete(byte[] key) {
         // System.out.printf("DELETE %s\n", new String(key));
-        db.delete(key);
+        try {
+            db.delete(key);
+        } catch (RocksDBException e) {
+            e.printStackTrace();
+        }
     }
 
     protected MetaInfo getKeyMeta(byte[] key) {
@@ -229,7 +228,7 @@ public class Database implements IDatabase {
             return 0;
         }
         return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> {
-            onItem.accept(MapItem.of(Encoding.stripDataKeyPrefix(entry.getKey()), entry.getValue()));
+            onItem.accept(MapItem.of(Encoding.stripDataKeyPrefix(entry.key()), entry.value()));
         });
     }
 
@@ -319,7 +318,7 @@ public class Database implements IDatabase {
         }
         final Box<Long> index = Box.of(0L);
         return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> {
-            onItem.accept(ListItem.of(index.value++, entry.getValue()));
+            onItem.accept(ListItem.of(index.value++, entry.value()));
         });
     }
 
@@ -391,7 +390,7 @@ public class Database implements IDatabase {
             return 0;
         }
         return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> {
-            onItem.accept(Encoding.decodeDataSetKey(entry.getKey()));
+            onItem.accept(Encoding.decodeDataSetKey(entry.key()));
         });
     }
 
@@ -418,31 +417,26 @@ public class Database implements IDatabase {
     public synchronized Optional<SortedListItem> sortedListLeftPop(final byte[] key, final byte[] maxScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
         final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
-        final DBIterator iter = dbIter();
+        final RocksIterator iter = dbIter();
         try {
             iter.seek(prefix);
-            if (!iter.hasNext()) {
+            if (!iter.isValid()) {
                 return Optional.empty();
             }
-            final Map.Entry<byte[], byte[]> first = iter.next();
-            if (!Encoding.hasPrefix(prefix, first.getKey())) {
+            if (!Encoding.hasPrefix(prefix, iter.key())) {
                 return Optional.empty();
             }
-            final byte[] score = Encoding.decodeDataSortedListKey(first.getKey());
+            final byte[] score = Encoding.decodeDataSortedListKey(iter.key());
             if (maxScore == null || Encoding.compareScoreBytes(score, maxScore) < 1) {
-                dbDelete(first.getKey());
+                dbDelete(iter.key());
                 meta.count--;
                 updateMetaInfo(key, meta);
-                return Optional.of(SortedListItem.of(score, first.getValue()));
+                return Optional.of(SortedListItem.of(score, iter.value()));
             } else {
                 return Optional.empty();
             }
         } finally {
-            try {
-                iter.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            iter.close();
         }
     }
 
@@ -450,31 +444,26 @@ public class Database implements IDatabase {
     public synchronized Optional<SortedListItem> sortedListRightPop(final byte[] key, final byte[] minScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
         final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
-        final DBIterator iter = dbIter();
+        final RocksIterator iter = dbIter();
         try {
-            iter.seek(Encoding.encodeDataSortedListPrefixKey(meta.id + 1));
-            if (!iter.hasPrev()) {
+            iter.seekForPrev(Encoding.encodeDataSortedListPrefixKey(meta.id + 1));
+            if (!iter.isValid()) {
                 return Optional.empty();
             }
-            final Map.Entry<byte[], byte[]> last = iter.prev();
-            if (!Encoding.hasPrefix(prefix, last.getKey())) {
+            if (!Encoding.hasPrefix(prefix, iter.key())) {
                 return Optional.empty();
             }
-            final byte[] score = Encoding.decodeDataSortedListKey(last.getKey());
+            final byte[] score = Encoding.decodeDataSortedListKey(iter.key());
             if (minScore == null || Encoding.compareScoreBytes(score, minScore) >= 0) {
-                dbDelete(last.getKey());
+                dbDelete(iter.key());
                 meta.count--;
                 updateMetaInfo(key, meta);
-                return Optional.of(SortedListItem.of(score, last.getValue()));
+                return Optional.of(SortedListItem.of(score, iter.value()));
             } else {
                 return Optional.empty();
             }
         } finally {
-            try {
-                iter.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            iter.close();
         }
     }
 
@@ -485,15 +474,15 @@ public class Database implements IDatabase {
             return 0;
         }
         return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> {
-            onItem.accept(SortedListItem.of(Encoding.decodeDataSortedListKey(entry.getKey()), entry.getValue()));
+            onItem.accept(SortedListItem.of(Encoding.decodeDataSortedListKey(entry.key()), entry.value()));
         });
     }
 
     @Override
     public long forEachKeys(final byte[] prefix, BiConsumer<byte[], MetaInfo> onItem) {
         return prefixForEach(Encoding.combineMultipleBytes(Encoding.KEY_PREFIX_META, prefix), (entry -> {
-            final MetaInfo meta = MetaInfo.fromBytes(entry.getValue());
-            onItem.accept(Encoding.stripDataKeyPrefix(entry.getKey()), meta);
+            final MetaInfo meta = MetaInfo.fromBytes(entry.value());
+            onItem.accept(Encoding.stripDataKeyPrefix(entry.key()), meta);
         }));
     }
 }

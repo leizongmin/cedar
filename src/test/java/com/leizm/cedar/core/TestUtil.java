@@ -1,12 +1,11 @@
 package com.leizm.cedar.core;
 
-import org.iq80.leveldb.DBIterator;
+import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
 
-import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class TestUtil {
     private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
@@ -27,7 +26,7 @@ public class TestUtil {
             Database db = new Database(path);
             dbList.add(db);
             return db;
-        } catch (IOException e) {
+        } catch (RocksDBException e) {
             e.printStackTrace();
             return null;
         }
@@ -46,20 +45,16 @@ public class TestUtil {
     public static void dumpDatabase(Database db) {
         System.out.println("==================== dumpDatabase ====================");
         System.out.println("path: " + db.getPath());
-        DBIterator iter = db.getDb().iterator();
+        RocksIterator iter = db.getDb().newIterator();
         iter.seekToFirst();
-        while (iter.hasNext()) {
-            final Map.Entry<byte[], byte[]> entry = iter.next();
+        while (iter.isValid()) {
             System.out.printf("%s (%s) = %s (%s) \n",
-                    bytesToHex(entry.getKey()), new String(entry.getKey()),
-                    bytesToHex(entry.getValue()), new String(entry.getValue()));
+                    bytesToHex(iter.key()), new String(iter.key()),
+                    bytesToHex(iter.value()), new String(iter.value()));
+            iter.next();
         }
         System.out.println();
-        try {
-            iter.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        iter.close();
     }
 
     public static List<byte[]> generateRandomKeyList(int count) {
