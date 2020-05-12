@@ -19,6 +19,14 @@ public class Encoding {
         return ByteBuffer.wrap(bytes).getLong();
     }
 
+    public static byte[] intToBytes(final int v) {
+        return ByteBuffer.allocate(4).putInt(v).array();
+    }
+
+    public static long intFromBytes(final byte[] bytes) {
+        return ByteBuffer.wrap(bytes).getInt();
+    }
+
     public static byte[] combineMultipleBytes(final byte[]... list) {
         int size = 0;
         for (final byte[] item : list) {

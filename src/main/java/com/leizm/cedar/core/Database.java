@@ -409,12 +409,12 @@ public class Database implements IDatabase {
     @Override
     public synchronized long sortedListAdd(final byte[] key, final SortedListItem... items) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
-        long seq = meta.extra == null ? 1 : Encoding.longFromBytes(meta.extra);
+        final MetaInfo.SortedListExtra extra = MetaInfo.SortedListExtra.fromBytes(meta.extra);
         for (int i = 0; i < items.length; i++) {
-            final byte[] fullKey = Encoding.encodeDataSortedListKey(meta.id, seq++, items[i].score);
+            final byte[] fullKey = Encoding.encodeDataSortedListKey(meta.id, extra.sequence++, items[i].score);
             dbPut(fullKey, items[i].value);
         }
-        meta.extra = Encoding.longToBytes(seq);
+        meta.extra = extra.toBytes();
         meta.count += items.length;
         updateMetaInfo(key, meta);
         return items.length;
@@ -425,9 +425,25 @@ public class Database implements IDatabase {
         return getCount(key);
     }
 
+    protected void checkSortedListCompact(final MetaInfo.SortedListExtra extra) {
+        try {
+            if (extra.leftDeletesCount >= 300) {
+                db.compactRange();
+                extra.leftDeletesCount = 0;
+            }
+            if (extra.rightDeletesCount >= 300) {
+                db.compactRange();
+                extra.rightDeletesCount = 0;
+            }
+        } catch (RocksDBException e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public synchronized Optional<SortedListItem> sortedListLeftPop(final byte[] key, final byte[] maxScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
+        final MetaInfo.SortedListExtra extra = MetaInfo.SortedListExtra.fromBytes(meta.extra);
         final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
         try (final ReadOptions readOptions = dbReadOptions(o -> {
             o.setPrefixSameAsStart(true);
@@ -445,6 +461,9 @@ public class Database implements IDatabase {
                 if (maxScore == null || Encoding.compareScoreBytes(score, maxScore) < 1) {
                     dbDelete(it.key());
                     meta.count--;
+                    extra.leftDeletesCount++;
+                    checkSortedListCompact(extra);
+                    meta.extra = extra.toBytes();
                     updateMetaInfo(key, meta);
                     return Optional.of(SortedListItem.of(score, it.value()));
                 } else {
@@ -457,6 +476,7 @@ public class Database implements IDatabase {
     @Override
     public synchronized Optional<SortedListItem> sortedListRightPop(final byte[] key, final byte[] minScore) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
+        final MetaInfo.SortedListExtra extra = MetaInfo.SortedListExtra.fromBytes(meta.extra);
         final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
         try (final ReadOptions readOptions = dbReadOptions(o -> {
             o.setPrefixSameAsStart(true);
@@ -474,6 +494,9 @@ public class Database implements IDatabase {
                 if (minScore == null || Encoding.compareScoreBytes(score, minScore) >= 0) {
                     dbDelete(it.key());
                     meta.count--;
+                    extra.rightDeletesCount++;
+                    checkSortedListCompact(extra);
+                    meta.extra = extra.toBytes();
                     updateMetaInfo(key, meta);
                     return Optional.of(SortedListItem.of(score, it.value()));
                 } else {

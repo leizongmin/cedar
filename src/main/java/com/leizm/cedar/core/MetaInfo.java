@@ -77,4 +77,37 @@ public class MetaInfo {
             );
         }
     }
+
+    public static class SortedListExtra {
+        public long sequence;
+        public int leftDeletesCount;
+        public int rightDeletesCount;
+
+        public SortedListExtra(final long sequence, final int leftDeletesCount, final int rightDeletesCount) {
+            this.sequence = sequence;
+            this.leftDeletesCount = leftDeletesCount;
+            this.rightDeletesCount = rightDeletesCount;
+        }
+
+        public static SortedListExtra fromBytes(final byte[] bytes) {
+            if (bytes == null) {
+                return new SortedListExtra(0, 0, 0);
+            }
+            final ByteBuffer b = ByteBuffer.allocate(bytes.length);
+            b.put(bytes);
+            b.flip();
+            final long sequence = b.getLong(0);
+            final int leftDeletesCount = b.getInt(8);
+            final int rightDeletesCount = b.getInt(12);
+            return new SortedListExtra(sequence, leftDeletesCount, rightDeletesCount);
+        }
+
+        public byte[] toBytes() {
+            return Encoding.combineMultipleBytes(
+                    Encoding.longToBytes(sequence),
+                    Encoding.intToBytes(leftDeletesCount),
+                    Encoding.intToBytes(rightDeletesCount)
+            );
+        }
+    }
 }
