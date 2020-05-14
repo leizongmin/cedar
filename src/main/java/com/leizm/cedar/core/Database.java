@@ -180,7 +180,6 @@ public class Database implements IDatabase {
             metaInfoCache.put(new String(key), meta);
             dbPut(Encoding.encodeMetaKey(key), meta.toBytes());
         } else {
-            // delete key if count is 0
             metaInfoCache.remove(new String(key));
             dbDelete(Encoding.encodeMetaKey(key));
         }
@@ -515,6 +514,104 @@ public class Database implements IDatabase {
         return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> {
             onItem.accept(SortedListItem.of(Encoding.decodeDataSortedListKey(entry.key()), entry.value()));
         });
+    }
+
+    @Override
+    public synchronized long ascSortedListAdd(final byte[] key, final SortedListItem... items) {
+        final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.AscSortedList);
+        final MetaInfo.AscSortedListExtra extra = MetaInfo.AscSortedListExtra.fromBytes(meta.extra);
+        long addCount = 0;
+        for (int i = 0; i < items.length; i++) {
+            final byte[] fullKey = Encoding.encodeDataSortedListKey(meta.id, extra.sequence++, items[i].score);
+            if (extra.minKey == null || Encoding.compareScoreBytes(fullKey, extra.minKey) >= 0) {
+                addCount++;
+                dbPut(fullKey, items[i].value);
+            }
+        }
+        meta.extra = extra.toBytes();
+        meta.count += addCount;
+        updateMetaInfo(key, meta);
+        return addCount;
+    }
+
+    @Override
+    public long ascSortedListCount(final byte[] key) {
+        return getCount(key);
+    }
+
+    @Override
+    public synchronized Optional<SortedListItem> ascSortedListPop(final byte[] key, final byte[] maxScore) {
+        final MetaInfo meta = getKeyMeta(key);
+        if (meta == null) {
+            return Optional.empty();
+        }
+        final MetaInfo.AscSortedListExtra extra = MetaInfo.AscSortedListExtra.fromBytes(meta.extra);
+        final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
+        final byte[] minKey = extra.minKey != null ? extra.minKey : prefix;
+        try (final ReadOptions readOptions = dbReadOptions(null)) {
+            try (final RocksIterator it = dbIterator(readOptions)) {
+                it.seek(minKey);
+                if (!it.isValid()) {
+                    return Optional.empty();
+                }
+                if (!Encoding.hasPrefix(prefix, it.key())) {
+                    return Optional.empty();
+                }
+                final byte[] score = Encoding.decodeDataSortedListKey(it.key());
+                if (maxScore == null || Encoding.compareScoreBytes(score, maxScore) < 1) {
+                    meta.count--;
+                    extra.deletesCount++;
+                    extra.minKey = Encoding.prefixUpperBound(it.key());
+                    if (meta.count < 1) {
+                        pruneAscSortedListRange(meta, extra);
+                    } else if (extra.deletesCount >= 300) {
+                        pruneAscSortedListRange(meta, extra);
+                        extra.deletesCount = 0;
+                    }
+                    meta.extra = extra.toBytes();
+                    updateMetaInfo(key, meta);
+                    return Optional.of(SortedListItem.of(score, it.value()));
+                } else {
+                    return Optional.empty();
+                }
+            }
+        }
+    }
+
+    @Override
+    public long ascSortedListForEach(final byte[] key, final Consumer<SortedListItem> onItem) {
+        final MetaInfo meta = getKeyMeta(key);
+        if (meta == null) {
+            return 0;
+        }
+        final MetaInfo.AscSortedListExtra extra = MetaInfo.AscSortedListExtra.fromBytes(meta.extra);
+        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> {
+            if (extra.minKey == null || Encoding.compareScoreBytes(entry.key(), extra.minKey) >= 0) {
+                onItem.accept(SortedListItem.of(Encoding.decodeDataSortedListKey(entry.key()), entry.value()));
+            }
+        });
+    }
+
+    @Override
+    public synchronized void ascSortedListPrune(byte[] key) {
+        final MetaInfo meta = getKeyMeta(key);
+        if (meta == null) {
+            return;
+        }
+        final MetaInfo.AscSortedListExtra extra = MetaInfo.AscSortedListExtra.fromBytes(meta.extra);
+        pruneAscSortedListRange(meta, extra);
+    }
+
+    protected void pruneAscSortedListRange(final MetaInfo meta, final MetaInfo.AscSortedListExtra extra) {
+        if (extra.minKey == null) {
+            return;
+        }
+        final byte[] prefix = Encoding.encodeDataSortedListPrefixKey(meta.id);
+        try {
+            db.deleteRange(prefix, extra.minKey);
+        } catch (RocksDBException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

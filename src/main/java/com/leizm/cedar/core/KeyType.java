@@ -4,7 +4,8 @@ public enum KeyType {
     Map,
     Set,
     List,
-    SortedList;
+    SortedList,
+    AscSortedList;
 
     /**
      * get KeyType from code
@@ -22,6 +23,8 @@ public enum KeyType {
                 return List;
             case 4:
                 return SortedList;
+            case 5:
+                return AscSortedList;
             default:
                 throw new IllegalArgumentException(String.format("invalid code '%d'", code));
         }
@@ -37,6 +40,8 @@ public enum KeyType {
                 return 3;
             case SortedList:
                 return 4;
+            case AscSortedList:
+                return 5;
             default:
                 throw new IllegalArgumentException(String.format("invalid type '%s'", this.name()));
         }

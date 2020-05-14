@@ -1,6 +1,7 @@
 package com.leizm.cedar.core;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public class MetaInfo {
     public final long id;
@@ -90,7 +91,7 @@ public class MetaInfo {
         }
 
         public static SortedListExtra fromBytes(final byte[] bytes) {
-            if (bytes == null) {
+            if (bytes == null || bytes.length == 0) {
                 return new SortedListExtra(0, 0, 0);
             }
             final ByteBuffer b = ByteBuffer.allocate(bytes.length);
@@ -107,6 +108,39 @@ public class MetaInfo {
                     Encoding.longToBytes(sequence),
                     Encoding.intToBytes(leftDeletesCount),
                     Encoding.intToBytes(rightDeletesCount)
+            );
+        }
+    }
+
+    public static class AscSortedListExtra {
+        public long sequence;
+        public int deletesCount;
+        public byte[] minKey;
+
+        public AscSortedListExtra(final long sequence, final int deletesCount, final byte[] minKey) {
+            this.sequence = sequence;
+            this.deletesCount = deletesCount;
+            this.minKey = minKey;
+        }
+
+        public static AscSortedListExtra fromBytes(final byte[] bytes) {
+            if (bytes == null || bytes.length == 0) {
+                return new AscSortedListExtra(0, 0, null);
+            }
+            final ByteBuffer b = ByteBuffer.allocate(bytes.length);
+            b.put(bytes);
+            b.flip();
+            final long sequence = b.getLong(0);
+            final int deletesCount = b.getInt(8);
+            final byte[] minKey = Arrays.copyOfRange(bytes, 12, bytes.length);
+            return new AscSortedListExtra(sequence, deletesCount, minKey);
+        }
+
+        public byte[] toBytes() {
+            return Encoding.combineMultipleBytes(
+                    Encoding.longToBytes(sequence),
+                    Encoding.intToBytes(deletesCount),
+                    minKey
             );
         }
     }

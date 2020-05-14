@@ -73,6 +73,22 @@ public interface IDatabase {
         return list;
     }
 
+    long ascSortedListAdd(byte[] key, SortedListItem... items);
+
+    long ascSortedListCount(byte[] key);
+
+    Optional<SortedListItem> ascSortedListPop(byte[] key, byte[] maxScore);
+
+    long ascSortedListForEach(byte[] key, Consumer<SortedListItem> onItem);
+
+    default List<SortedListItem> ascSortedListItems(byte[] key) {
+        final List<SortedListItem> list = new ArrayList<>();
+        ascSortedListForEach(key, list::add);
+        return list;
+    }
+
+    void ascSortedListPrune(byte[] key);
+
     long forEachKeys(byte[] prefix, BiConsumer<byte[], MetaInfo> onItem);
 
     default long forEachKeys(BiConsumer<byte[], MetaInfo> onItem) {

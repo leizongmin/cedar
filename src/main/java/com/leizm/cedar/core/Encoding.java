@@ -80,6 +80,9 @@ public class Encoding {
     }
 
     public static int compareScoreBytes(final byte[] score1, final byte[] score2) {
+        if (score1 == null || score2 == null) {
+            return 0;
+        }
         if (score1.length != score2.length) {
             return 0;
         }
