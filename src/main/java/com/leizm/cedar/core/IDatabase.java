@@ -57,7 +57,7 @@ public interface IDatabase {
         return list;
     }
 
-    long sortedListAdd(byte[] key, SortedListItem[] items);
+    long sortedListAdd(byte[] key, SortedListItem... items);
 
     long sortedListCount(byte[] key);
 
