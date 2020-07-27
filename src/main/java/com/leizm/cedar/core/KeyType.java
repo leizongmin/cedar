@@ -11,7 +11,7 @@ public enum KeyType {
      * get KeyType from code
      *
      * @param code
-     * @return
+     * @return KeyType
      */
     public static KeyType fromByte(byte code) {
         switch (code) {

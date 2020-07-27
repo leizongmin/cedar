@@ -9,7 +9,7 @@ import java.util.List;
 
 public class TestUtil {
     private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
-    public static List<Database> dbList = new ArrayList<>();
+    public static final List<Database> dbList = new ArrayList<>();
     private static long generateRandomKeyCounter = 0;
 
     public static Database createTempDatabase() {

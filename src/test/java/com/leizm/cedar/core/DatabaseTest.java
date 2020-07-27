@@ -3,7 +3,6 @@ package com.leizm.cedar.core;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -13,12 +12,8 @@ class DatabaseTest {
     @AfterAll
     static void cleanup() {
         TestUtil.dbList.forEach(db -> {
-            try {
-                TestUtil.dumpDatabase(db);
-                db.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            TestUtil.dumpDatabase(db);
+            db.close();
         });
     }
 

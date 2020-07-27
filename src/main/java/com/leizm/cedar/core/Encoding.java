@@ -110,18 +110,18 @@ public class Encoding {
         return ByteBuffer.wrap(bytes, 1, 8).getLong();
     }
 
-    private static int[] bytesToUnsignedInts(final byte[] bytes) {
-        final int[] ints = new int[bytes.length];
+    private static int[] bytesToUnsignedIntArray(final byte[] bytes) {
+        final int[] arr = new int[bytes.length];
         for (int i = 0; i < bytes.length; i++) {
-            ints[i] = Byte.toUnsignedInt(bytes[i]);
+            arr[i] = Byte.toUnsignedInt(bytes[i]);
         }
-        return ints;
+        return arr;
     }
 
-    private static byte[] unsignedIntsToBytes(final int[] ints) {
-        final byte[] bytes = new byte[ints.length];
-        for (int i = 0; i < ints.length; i++) {
-            bytes[i] = (byte) ints[i];
+    private static byte[] unsignedIntArrayToBytes(final int[] arr) {
+        final byte[] bytes = new byte[arr.length];
+        for (int i = 0; i < arr.length; i++) {
+            bytes[i] = (byte) arr[i];
         }
         return bytes;
     }
@@ -130,7 +130,7 @@ public class Encoding {
         if (prefix.length < 1) {
             return null;
         }
-        final int[] bytes = bytesToUnsignedInts(prefix);
+        final int[] bytes = bytesToUnsignedIntArray(prefix);
         int i = bytes.length - 1;
         bytes[i]--;
         if (i > 0 && bytes[i] < 0) {
@@ -147,30 +147,30 @@ public class Encoding {
         if (bytes[0] < 0) {
             return null;
         }
-        return unsignedIntsToBytes(bytes);
+        return unsignedIntArrayToBytes(bytes);
     }
 
     public static byte[] prefixUpperBound(final byte[] prefix) {
         if (prefix.length < 1) {
             return null;
         }
-        final int[] bytes = bytesToUnsignedInts(prefix);
-        int i = bytes.length - 1;
-        bytes[i]++;
-        if (i > 0 && bytes[i] > 255) {
-            bytes[i] = 0;
-            bytes[--i]++;
+        final int[] uintArr = bytesToUnsignedIntArray(prefix);
+        int i = uintArr.length - 1;
+        uintArr[i]++;
+        if (i > 0 && uintArr[i] > 255) {
+            uintArr[i] = 0;
+            uintArr[--i]++;
         }
         for (; i > 0; i--) {
-            if (bytes[i] > 255) {
-                bytes[i] = 0;
-                bytes[i - 1]++;
+            if (uintArr[i] > 255) {
+                uintArr[i] = 0;
+                uintArr[i - 1]++;
             }
         }
 
-        if (bytes[0] > 255) {
+        if (uintArr[0] > 255) {
             return null;
         }
-        return unsignedIntsToBytes(bytes);
+        return unsignedIntArrayToBytes(uintArr);
     }
 }

@@ -5,7 +5,7 @@ import org.rocksdb.LRUCache;
 
 public class Options {
     public org.rocksdb.Options rocksDBOptions;
-    public int metaInfoCacheCount = 1000;
+    public final int metaInfoCacheCount = 1000;
 
     public org.rocksdb.Options getRocksDBOptions() {
         if (rocksDBOptions == null) {

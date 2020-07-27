@@ -2,7 +2,6 @@ package com.leizm.cedar.core;
 
 import org.rocksdb.*;
 
-import java.io.IOException;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -30,7 +29,7 @@ public class Database implements IDatabase {
      *
      * @param path    store path
      * @param options options
-     * @throws IOException
+     * @throws RocksDBException
      */
     public Database(String path, Options options) throws RocksDBException {
         options = options == null ? new Options() : options;
@@ -44,7 +43,7 @@ public class Database implements IDatabase {
      * open database
      *
      * @param path store path
-     * @throws IOException
+     * @throws RocksDBException
      */
     public Database(String path) throws RocksDBException {
         this(path, null);
@@ -53,7 +52,7 @@ public class Database implements IDatabase {
     /**
      * returns LevelDB instance
      *
-     * @return
+     * @return RocksDB
      */
     public RocksDB getDb() {
         return db;
@@ -62,7 +61,7 @@ public class Database implements IDatabase {
     /**
      * returns database path
      *
-     * @return
+     * @return path
      */
     public String getPath() {
         return path;
@@ -71,9 +70,8 @@ public class Database implements IDatabase {
     /**
      * close database
      *
-     * @throws IOException
      */
-    public void close() throws IOException {
+    public void close() {
         db.close();
     }
 
@@ -238,9 +236,7 @@ public class Database implements IDatabase {
         if (meta == null) {
             return 0;
         }
-        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> {
-            onItem.accept(MapItem.of(Encoding.stripDataKeyPrefix(entry.key()), entry.value()));
-        });
+        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> onItem.accept(MapItem.of(Encoding.stripDataKeyPrefix(entry.key()), entry.value())));
     }
 
     @Override
@@ -328,9 +324,7 @@ public class Database implements IDatabase {
             return 0;
         }
         final Box<Long> index = Box.of(0L);
-        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> {
-            onItem.accept(ListItem.of(index.value++, entry.value()));
-        });
+        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> onItem.accept(ListItem.of(index.value++, entry.value())));
     }
 
     @Override
@@ -400,18 +394,16 @@ public class Database implements IDatabase {
         if (meta == null) {
             return 0;
         }
-        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> {
-            onItem.accept(Encoding.decodeDataSetKey(entry.key()));
-        });
+        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> onItem.accept(Encoding.decodeDataSetKey(entry.key())));
     }
 
     @Override
     public synchronized long sortedListAdd(final byte[] key, final SortedListItem... items) {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.SortedList);
         final MetaInfo.SortedListExtra extra = MetaInfo.SortedListExtra.fromBytes(meta.extra);
-        for (int i = 0; i < items.length; i++) {
-            final byte[] fullKey = Encoding.encodeDataSortedListKey(meta.id, extra.sequence++, items[i].score);
-            dbPut(fullKey, items[i].value);
+        for (final SortedListItem item : items) {
+            final byte[] fullKey = Encoding.encodeDataSortedListKey(meta.id, extra.sequence++, item.score);
+            dbPut(fullKey, item.value);
         }
         meta.extra = extra.toBytes();
         meta.count += items.length;
@@ -511,9 +503,7 @@ public class Database implements IDatabase {
         if (meta == null) {
             return 0;
         }
-        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> {
-            onItem.accept(SortedListItem.of(Encoding.decodeDataSortedListKey(entry.key()), entry.value()));
-        });
+        return prefixForEach(Encoding.encodeDataMapPrefixKey(meta.id), entry -> onItem.accept(SortedListItem.of(Encoding.decodeDataSortedListKey(entry.key()), entry.value())));
     }
 
     @Override
@@ -521,11 +511,11 @@ public class Database implements IDatabase {
         final MetaInfo meta = getOrCreateKeyMeta(key, KeyType.AscSortedList);
         final MetaInfo.AscSortedListExtra extra = MetaInfo.AscSortedListExtra.fromBytes(meta.extra);
         long addCount = 0;
-        for (int i = 0; i < items.length; i++) {
-            final byte[] fullKey = Encoding.encodeDataSortedListKey(meta.id, extra.sequence++, items[i].score);
+        for (final SortedListItem item : items) {
+            final byte[] fullKey = Encoding.encodeDataSortedListKey(meta.id, extra.sequence++, item.score);
             if (extra.minKey == null || Encoding.compareScoreBytes(fullKey, extra.minKey) >= 0) {
                 addCount++;
-                dbPut(fullKey, items[i].value);
+                dbPut(fullKey, item.value);
             }
         }
         meta.extra = extra.toBytes();
