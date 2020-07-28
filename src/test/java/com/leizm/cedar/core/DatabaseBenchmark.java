@@ -8,6 +8,7 @@ public class DatabaseBenchmark {
         testSet();
         testList();
         testSortedList();
+        testAscSortedList();
     }
 
     private static void runTestCase(final String title, final int count, final TestCaseFunction fn) {
@@ -132,6 +133,29 @@ public class DatabaseBenchmark {
             for (int i = 0; i < count; i++) {
                 final byte[] v = Integer.toString(i).getBytes();
                 db.sortedListRightPop(key, v);
+            }
+        });
+        System.out.println();
+    }
+
+    public static void testAscSortedList() {
+        final Database db = TestUtil.createTempDatabase();
+        final byte[] key = TestUtil.generateRandomKey();
+        runTestCase("db.ascSortedListAdd", COUNT * 2, count -> {
+            for (int i = 0; i < count; i++) {
+                final byte[] v = Integer.toString(i).getBytes();
+                db.ascSortedListAdd(key, SortedListItem.of(v, v));
+            }
+        });
+        runTestCase("db.ascSortedListCount", COUNT, count -> {
+            for (int i = 0; i < count; i++) {
+                db.ascSortedListCount(key);
+            }
+        });
+        runTestCase("db.ascSortedListPop", COUNT, count -> {
+            for (int i = 0; i < count; i++) {
+                final byte[] v = Integer.toString(i).getBytes();
+                db.ascSortedListPop(key, v);
             }
         });
         System.out.println();
